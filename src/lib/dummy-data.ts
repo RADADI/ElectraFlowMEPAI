@@ -1,0 +1,180 @@
+// Dummy data for MEPFlow AI demo
+
+export const ROLES = [
+  "Admin", "HR", "Project Manager", "Electrical Engineer", "Senior Engineer",
+  "QA/QC", "Document Controller", "Executive", "Client", "Contractor",
+] as const;
+export type Role = (typeof ROLES)[number];
+
+export const DISCIPLINES = [
+  "Division 21 - Fire Suppression",
+  "Division 22 - Plumbing",
+  "Division 23 - HVAC",
+  "Division 26 - Electrical",
+  "Division 27 - Communications",
+  "Division 28 - Security",
+];
+
+export const ACTION_CODES = ["REV,RNR", "NC,RNR", "NC,RES", "REJ,RES", "FOR RECORD ONLY"];
+
+export const projects = [
+  { id: "p1", number: "MEP-2025-001", name: "Riyadh Metro Phase 3 - Substation", client: "Royal Commission", location: "Riyadh, KSA", pm: "Ahmed Hassan", discipline: "Electrical", start: "2024-08-15", due: "2026-03-30", progress: 62, status: "On Track", budget: 4_250_000, actualCost: 2_310_000, contract: 5_100_000, risk: "Medium", priority: "High", contractor: "ALEC Engineering", consultant: "Parsons", engineers: ["Sara Khan", "Omar Faisal", "John Doe"], next: "2025-07-12" },
+  { id: "p2", number: "MEP-2025-002", name: "NEOM Hotel Complex - MEP", client: "NEOM Co.", location: "Tabuk, KSA", pm: "Linda Park", discipline: "MEP", start: "2025-01-10", due: "2026-12-15", progress: 28, status: "On Track", budget: 9_800_000, actualCost: 2_140_000, contract: 11_200_000, risk: "Low", priority: "High", contractor: "Saudi Binladin", consultant: "AECOM", engineers: ["Maria Lopez", "Hassan Ali"], next: "2025-07-05" },
+  { id: "p3", number: "MEP-2024-018", name: "Dubai Mall Expansion - HVAC", client: "Emaar", location: "Dubai, UAE", pm: "Rajiv Menon", discipline: "HVAC", start: "2024-03-01", due: "2025-08-20", progress: 84, status: "Delayed", budget: 3_400_000, actualCost: 3_120_000, contract: 3_900_000, risk: "High", priority: "Critical", contractor: "Al Naboodah", consultant: "Atkins", engineers: ["Priya Shah", "Mohammed Iqbal"], next: "2025-06-28" },
+  { id: "p4", number: "MEP-2024-022", name: "King Salman Park - Fire Suppression", client: "Diriyah Gate", location: "Riyadh, KSA", pm: "Ahmed Hassan", discipline: "Fire", start: "2024-06-15", due: "2025-10-10", progress: 71, status: "On Track", budget: 1_850_000, actualCost: 1_220_000, contract: 2_100_000, risk: "Low", priority: "Medium", contractor: "Nesma", consultant: "WSP", engineers: ["Khalid Otaibi"], next: "2025-07-20" },
+  { id: "p5", number: "MEP-2025-007", name: "Aramco HQ Renovation - Power", client: "Saudi Aramco", location: "Dhahran, KSA", pm: "Linda Park", discipline: "Electrical", start: "2025-02-01", due: "2026-06-30", progress: 18, status: "On Track", budget: 6_700_000, actualCost: 940_000, contract: 7_800_000, risk: "Medium", priority: "High", contractor: "Saudi Services", consultant: "Hill International", engineers: ["John Doe", "Sara Khan"], next: "2025-07-15" },
+  { id: "p6", number: "MEP-2024-031", name: "Jeddah Airport T2 - Communications", client: "GACA", location: "Jeddah, KSA", pm: "Rajiv Menon", discipline: "Comms", start: "2024-09-05", due: "2025-09-01", progress: 92, status: "On Track", budget: 2_900_000, actualCost: 2_750_000, contract: 3_300_000, risk: "Low", priority: "Medium", contractor: "Almabani", consultant: "Dar Al-Handasah", engineers: ["Maria Lopez"], next: "2025-06-30" },
+  { id: "p7", number: "MEP-2023-045", name: "Qiddiya Theme Park - Security", client: "Qiddiya Inv.", location: "Riyadh, KSA", pm: "Ahmed Hassan", discipline: "Security", start: "2023-11-01", due: "2025-05-30", progress: 96, status: "Delayed", budget: 4_100_000, actualCost: 4_050_000, contract: 4_500_000, risk: "High", priority: "High", contractor: "El Seif", consultant: "Mace", engineers: ["Omar Faisal", "Khalid Otaibi"], next: "2025-06-25" },
+  { id: "p8", number: "MEP-2025-012", name: "Red Sea Resort - Plumbing", client: "Red Sea Global", location: "Tabuk, KSA", pm: "Linda Park", discipline: "Plumbing", start: "2025-04-10", due: "2026-08-15", progress: 8, status: "On Track", budget: 2_300_000, actualCost: 180_000, contract: 2_700_000, risk: "Low", priority: "Medium", contractor: "Drake & Scull", consultant: "Buro Happold", engineers: ["Hassan Ali"], next: "2025-07-22" },
+];
+
+export const submittals = [
+  { id: "s1", section: "26 05 19", paragraph: "2.1.A", mark: "LV-CBL-01", product: "XLPE Power Cable 4C×95mm²", notes: "Brand matches spec; ratings OK.", status: "No Exception", action: "REV,RNR", assignedTo: "Sara Khan", due: "2025-07-08" },
+  { id: "s2", section: "26 24 16", paragraph: "2.3.B", mark: "PNL-DB-04", product: "Distribution Panel 400A", notes: "Short-circuit rating below spec.", status: "Need Corrections", action: "NC,RNR", assignedTo: "Omar Faisal", due: "2025-07-05" },
+  { id: "s3", section: "23 81 26", paragraph: "2.2.A", mark: "AHU-12", product: "Air Handling Unit 20,000 CFM", notes: "Different motor model proposed.", status: "Resubmittal Required", action: "NC,RES", assignedTo: "Priya Shah", due: "2025-07-10" },
+  { id: "s4", section: "21 13 13", paragraph: "2.1.C", mark: "SPR-HD-02", product: "Quick Response Sprinkler", notes: "Wrong K-factor.", status: "Rejected", action: "REJ,RES", assignedTo: "Khalid Otaibi", due: "2025-07-03" },
+  { id: "s5", section: "27 15 00", paragraph: "2.4.D", mark: "CAT6A-01", product: "Cat6A UTP Cable", notes: "Manufacturer datasheet only.", status: "For Record Only", action: "FOR RECORD ONLY", assignedTo: "Maria Lopez", due: "2025-07-12" },
+  { id: "s6", section: "28 13 00", paragraph: "2.2.E", mark: "ACS-RDR-08", product: "HID Multi-class Reader", notes: "OSDP v2 confirmed.", status: "No Exception", action: "REV,RNR", assignedTo: "John Doe", due: "2025-07-09" },
+  { id: "s7", section: "26 05 26", paragraph: "2.5.A", mark: "GND-BAR-01", product: "Copper Grounding Bar", notes: "Dimensions slightly off.", status: "Need Corrections", action: "NC,RNR", assignedTo: "Sara Khan", due: "2025-07-11" },
+  { id: "s8", section: "22 11 16", paragraph: "2.1.B", mark: "DCW-PIPE", product: "Type L Copper Pipe", notes: "Compliant.", status: "No Exception", action: "REV,RNR", assignedTo: "Hassan Ali", due: "2025-07-14" },
+];
+
+export const employees = [
+  { id: "e1", name: "Sara Khan", role: "Senior Electrical Engineer", current: "Riyadh Metro", next: "Aramco HQ", available: 8, assigned: 38, util: 95, status: "Overallocated", skills: { AutoCAD: 5, Revit: 4, ETAP: 5, SKM: 4, Bluebeam: 5, "Power BI": 3, Python: 2, "AI Tools": 3 } },
+  { id: "e2", name: "Omar Faisal", role: "Electrical Engineer", current: "Riyadh Metro", next: "Qiddiya", available: 12, assigned: 32, util: 80, status: "Healthy", skills: { AutoCAD: 5, Revit: 3, ETAP: 4, SKM: 3, Bluebeam: 4, "Power BI": 2, Python: 1, "AI Tools": 2 } },
+  { id: "e3", name: "John Doe", role: "Senior Engineer", current: "Aramco HQ", next: "Riyadh Metro", available: 6, assigned: 40, util: 100, status: "Overallocated", skills: { AutoCAD: 5, Revit: 5, ETAP: 5, SKM: 5, Bluebeam: 5, "Power BI": 4, Python: 3, "AI Tools": 4 } },
+  { id: "e4", name: "Priya Shah", role: "HVAC Engineer", current: "Dubai Mall", next: "—", available: 20, assigned: 24, util: 60, status: "Available", skills: { AutoCAD: 4, Revit: 5, ETAP: 1, SKM: 1, Bluebeam: 4, "Power BI": 3, Python: 2, "AI Tools": 3 } },
+  { id: "e5", name: "Maria Lopez", role: "Comms Engineer", current: "Jeddah Airport", next: "NEOM Hotel", available: 14, assigned: 30, util: 75, status: "Healthy", skills: { AutoCAD: 4, Revit: 3, ETAP: 1, SKM: 1, Bluebeam: 5, "Power BI": 4, Python: 4, "AI Tools": 4 } },
+  { id: "e6", name: "Khalid Otaibi", role: "Fire Engineer", current: "King Salman Park", next: "Qiddiya", available: 10, assigned: 34, util: 85, status: "Healthy", skills: { AutoCAD: 5, Revit: 4, ETAP: 2, SKM: 2, Bluebeam: 5, "Power BI": 2, Python: 1, "AI Tools": 2 } },
+  { id: "e7", name: "Hassan Ali", role: "Plumbing Engineer", current: "Red Sea Resort", next: "NEOM Hotel", available: 22, assigned: 22, util: 55, status: "Available", skills: { AutoCAD: 4, Revit: 4, ETAP: 1, SKM: 1, Bluebeam: 4, "Power BI": 3, Python: 2, "AI Tools": 3 } },
+  { id: "e8", name: "Mohammed Iqbal", role: "QA/QC Lead", current: "Dubai Mall", next: "Aramco HQ", available: 8, assigned: 36, util: 90, status: "Healthy", skills: { AutoCAD: 3, Revit: 3, ETAP: 3, SKM: 3, Bluebeam: 5, "Power BI": 4, Python: 2, "AI Tools": 3 } },
+];
+
+export const documents = [
+  { id: "d1", name: "Electrical Spec - Section 26.pdf", project: "Riyadh Metro", discipline: "Electrical", version: "v3.2", uploader: "Sara Khan", date: "2025-06-18", status: "Approved", size: "4.8 MB", type: "PDF" },
+  { id: "d2", name: "Single Line Diagram - SS01.dwg", project: "Riyadh Metro", discipline: "Electrical", version: "v2.0", uploader: "John Doe", date: "2025-06-15", status: "In Review", size: "12.4 MB", type: "DWG" },
+  { id: "d3", name: "HVAC Submittal Package.zip", project: "Dubai Mall", discipline: "HVAC", version: "v1.0", uploader: "Priya Shah", date: "2025-06-20", status: "Pending", size: "84.1 MB", type: "ZIP" },
+  { id: "d4", name: "Cable Schedule.xlsx", project: "Aramco HQ", discipline: "Electrical", version: "v1.4", uploader: "Omar Faisal", date: "2025-06-12", status: "Approved", size: "1.2 MB", type: "XLSX" },
+  { id: "d5", name: "Fire Pump Cut-sheet.pdf", project: "King Salman Park", discipline: "Fire", version: "v1.1", uploader: "Khalid Otaibi", date: "2025-06-10", status: "Approved", size: "2.3 MB", type: "PDF" },
+  { id: "d6", name: "Site Photos June.jpg", project: "NEOM Hotel", discipline: "General", version: "v1.0", uploader: "Linda Park", date: "2025-06-22", status: "Approved", size: "8.7 MB", type: "JPG" },
+  { id: "d7", name: "BOQ Revision C.docx", project: "Red Sea Resort", discipline: "MEP", version: "v3.0", uploader: "Hassan Ali", date: "2025-06-19", status: "In Review", size: "780 KB", type: "DOCX" },
+  { id: "d8", name: "Control Panel Layout.png", project: "Qiddiya", discipline: "Electrical", version: "v2.1", uploader: "Omar Faisal", date: "2025-06-17", status: "Approved", size: "3.6 MB", type: "PNG" },
+];
+
+export const rfis = [
+  { id: "r1", number: "RFI-001", project: "Riyadh Metro", subject: "Cable tray routing clash with HVAC duct", assignedTo: "Atkins", due: "2025-07-05", status: "Open", priority: "High" },
+  { id: "r2", number: "RFI-002", project: "Dubai Mall", subject: "AHU base anchor detail clarification", assignedTo: "Atkins", due: "2025-07-02", status: "Answered", priority: "Medium" },
+  { id: "r3", number: "RFI-003", project: "Aramco HQ", subject: "Transformer vault ventilation rate", assignedTo: "Hill Intl.", due: "2025-07-10", status: "Open", priority: "High" },
+  { id: "r4", number: "RFI-004", project: "NEOM Hotel", subject: "Lighting control protocol selection", assignedTo: "AECOM", due: "2025-07-12", status: "Open", priority: "Low" },
+  { id: "r5", number: "RFI-005", project: "Jeddah Airport", subject: "Fiber backbone redundancy path", assignedTo: "Dar", due: "2025-06-28", status: "Closed", priority: "Medium" },
+];
+
+export const ncrs = [
+  { id: "n1", number: "NCR-001", project: "Dubai Mall", type: "Installation", root: "Wrong cable size used in run R-12", action: "Replace with 4C×95mm² XLPE", assignedTo: "Al Naboodah", status: "Open", due: "2025-07-08" },
+  { id: "n2", number: "NCR-002", project: "Qiddiya", type: "Documentation", root: "Missing material certificate", action: "Submit mill test certificate", assignedTo: "El Seif", status: "In Progress", due: "2025-07-04" },
+  { id: "n3", number: "NCR-003", project: "Riyadh Metro", type: "QA/QC", root: "Earth resistance > 5Ω", action: "Add ground rods and retest", assignedTo: "ALEC", status: "Closed", due: "2025-06-20" },
+  { id: "n4", number: "NCR-004", project: "King Salman Park", type: "Safety", root: "Sprinkler head spacing exceeds NFPA 13", action: "Reposition heads per redline", assignedTo: "Nesma", status: "Open", due: "2025-07-11" },
+];
+
+export const meetings = [
+  { id: "m1", title: "Riyadh Metro - Weekly Coordination", date: "2025-06-24", attendees: 8, actions: 5 },
+  { id: "m2", title: "NEOM Hotel - Kickoff", date: "2025-06-20", attendees: 14, actions: 12 },
+  { id: "m3", title: "Dubai Mall - Recovery Plan", date: "2025-06-18", attendees: 6, actions: 9 },
+];
+
+// ---------- Charts ----------
+export const revenueTrend = [
+  { m: "Jan", revenue: 1.2, profit: 0.28 }, { m: "Feb", revenue: 1.4, profit: 0.32 },
+  { m: "Mar", revenue: 1.7, profit: 0.41 }, { m: "Apr", revenue: 1.5, profit: 0.34 },
+  { m: "May", revenue: 1.9, profit: 0.46 }, { m: "Jun", revenue: 2.2, profit: 0.55 },
+  { m: "Jul", revenue: 2.4, profit: 0.6 }, { m: "Aug", revenue: 2.1, profit: 0.5 },
+  { m: "Sep", revenue: 2.6, profit: 0.66 }, { m: "Oct", revenue: 2.8, profit: 0.71 },
+  { m: "Nov", revenue: 3.0, profit: 0.78 }, { m: "Dec", revenue: 3.3, profit: 0.84 },
+];
+
+export const projectStatus = [
+  { name: "On Track", value: 5, color: "var(--color-success)" },
+  { name: "Delayed", value: 2, color: "var(--color-warning)" },
+  { name: "At Risk", value: 1, color: "var(--color-destructive)" },
+];
+
+export const workloadByMonth = [
+  { m: "Jul", required: 42, available: 38 }, { m: "Aug", required: 45, available: 38 },
+  { m: "Sep", required: 50, available: 40 }, { m: "Oct", required: 48, available: 42 },
+  { m: "Nov", required: 44, available: 44 }, { m: "Dec", required: 41, available: 44 },
+  { m: "Jan", required: 46, available: 46 }, { m: "Feb", required: 52, available: 46 },
+  { m: "Mar", required: 55, available: 48 }, { m: "Apr", required: 50, available: 50 },
+];
+
+export const upcomingSubmissions = [
+  { d: "Wk 27", count: 6 }, { d: "Wk 28", count: 9 }, { d: "Wk 29", count: 4 },
+  { d: "Wk 30", count: 11 }, { d: "Wk 31", count: 7 }, { d: "Wk 32", count: 5 },
+];
+
+export const costBreakdown = [
+  { name: "Labor", value: 48, color: "var(--color-chart-1)" },
+  { name: "Software", value: 6, color: "var(--color-chart-2)" },
+  { name: "Travel", value: 4, color: "var(--color-chart-3)" },
+  { name: "Subcontractors", value: 32, color: "var(--color-chart-4)" },
+  { name: "Overhead", value: 10, color: "var(--color-chart-5)" },
+];
+
+export const cashFlow = [
+  { m: "Jan", inflow: 1.1, outflow: 0.9 }, { m: "Feb", inflow: 1.3, outflow: 1.0 },
+  { m: "Mar", inflow: 1.5, outflow: 1.2 }, { m: "Apr", inflow: 1.4, outflow: 1.3 },
+  { m: "May", inflow: 1.8, outflow: 1.3 }, { m: "Jun", inflow: 2.0, outflow: 1.5 },
+];
+
+export const milestoneTimeline = [
+  { name: "Design Freeze", date: "Jul 5", project: "Riyadh Metro" },
+  { name: "30% Submittals", date: "Jul 12", project: "NEOM Hotel" },
+  { name: "Commissioning", date: "Jul 18", project: "Jeddah Airport" },
+  { name: "Final Handover", date: "Jul 25", project: "King Salman Park" },
+];
+
+export const stats = {
+  totalProjects: 24,
+  activeProjects: 8,
+  delayedProjects: 2,
+  pendingSubmittals: 17,
+  upcomingDeadlines: 11,
+  revenue: 28.4, // M USD
+  profitMargin: 24.6,
+  utilization: 81,
+  riskLevel: "Medium",
+  billed: 21.2,
+  collected: 18.7,
+  outstanding: 4.1,
+  retention: 2.3,
+  cash: 6.4,
+};
+
+export const formatMoney = (n: number) =>
+  n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${(n / 1_000).toFixed(0)}K`;
+
+export const statusColor: Record<string, string> = {
+  "On Track": "bg-success/15 text-success border-success/30",
+  Delayed: "bg-warning/15 text-warning border-warning/30",
+  "At Risk": "bg-destructive/15 text-destructive border-destructive/30",
+  Approved: "bg-success/15 text-success border-success/30",
+  "In Review": "bg-info/15 text-info border-info/30",
+  Pending: "bg-warning/15 text-warning border-warning/30",
+  Open: "bg-info/15 text-info border-info/30",
+  Answered: "bg-success/15 text-success border-success/30",
+  Closed: "bg-muted text-muted-foreground border-border",
+  "In Progress": "bg-info/15 text-info border-info/30",
+  "No Exception": "bg-success/15 text-success border-success/30",
+  "Need Corrections": "bg-warning/15 text-warning border-warning/30",
+  "Resubmittal Required": "bg-warning/15 text-warning border-warning/30",
+  Rejected: "bg-destructive/15 text-destructive border-destructive/30",
+  "For Record Only": "bg-muted text-muted-foreground border-border",
+  Available: "bg-success/15 text-success border-success/30",
+  Healthy: "bg-info/15 text-info border-info/30",
+  Overallocated: "bg-destructive/15 text-destructive border-destructive/30",
+};
+
+export const riskColor: Record<string, string> = {
+  Low: "bg-success/15 text-success border-success/30",
+  Medium: "bg-warning/15 text-warning border-warning/30",
+  High: "bg-destructive/15 text-destructive border-destructive/30",
+};

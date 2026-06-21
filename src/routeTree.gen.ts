@@ -9,61 +9,488 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppWorkloadRouteImport } from './routes/_app.workload'
+import { Route as AppSubmittalsRouteImport } from './routes/_app.submittals'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppRfiRouteImport } from './routes/_app.rfi'
+import { Route as AppResourcesRouteImport } from './routes/_app.resources'
+import { Route as AppReportsRouteImport } from './routes/_app.reports'
+import { Route as AppProjectsRouteImport } from './routes/_app.projects'
+import { Route as AppPmRouteImport } from './routes/_app.pm'
+import { Route as AppNcrRouteImport } from './routes/_app.ncr'
+import { Route as AppMeetingsRouteImport } from './routes/_app.meetings'
+import { Route as AppHrRouteImport } from './routes/_app.hr'
+import { Route as AppFinancialsRouteImport } from './routes/_app.financials'
+import { Route as AppExecutiveRouteImport } from './routes/_app.executive'
+import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
+import { Route as AppClientRouteImport } from './routes/_app.client'
+import { Route as AppAppsRouteImport } from './routes/_app.apps'
+import { Route as AppAiRouteImport } from './routes/_app.ai'
+import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWorkloadRoute = AppWorkloadRouteImport.update({
+  id: '/workload',
+  path: '/workload',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSubmittalsRoute = AppSubmittalsRouteImport.update({
+  id: '/submittals',
+  path: '/submittals',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRfiRoute = AppRfiRouteImport.update({
+  id: '/rfi',
+  path: '/rfi',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResourcesRoute = AppResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsRoute = AppProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPmRoute = AppPmRouteImport.update({
+  id: '/pm',
+  path: '/pm',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNcrRoute = AppNcrRouteImport.update({
+  id: '/ncr',
+  path: '/ncr',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMeetingsRoute = AppMeetingsRouteImport.update({
+  id: '/meetings',
+  path: '/meetings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHrRoute = AppHrRouteImport.update({
+  id: '/hr',
+  path: '/hr',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinancialsRoute = AppFinancialsRouteImport.update({
+  id: '/financials',
+  path: '/financials',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExecutiveRoute = AppExecutiveRouteImport.update({
+  id: '/executive',
+  path: '/executive',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocumentsRoute = AppDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientRoute = AppClientRouteImport.update({
+  id: '/client',
+  path: '/client',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppsRoute = AppAppsRouteImport.update({
+  id: '/apps',
+  path: '/apps',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiRoute = AppAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsIdRoute = AppProjectsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppProjectsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/ai': typeof AppAiRoute
+  '/apps': typeof AppAppsRoute
+  '/client': typeof AppClientRoute
+  '/documents': typeof AppDocumentsRoute
+  '/executive': typeof AppExecutiveRoute
+  '/financials': typeof AppFinancialsRoute
+  '/hr': typeof AppHrRoute
+  '/meetings': typeof AppMeetingsRoute
+  '/ncr': typeof AppNcrRoute
+  '/pm': typeof AppPmRoute
+  '/projects': typeof AppProjectsRouteWithChildren
+  '/reports': typeof AppReportsRoute
+  '/resources': typeof AppResourcesRoute
+  '/rfi': typeof AppRfiRoute
+  '/settings': typeof AppSettingsRoute
+  '/submittals': typeof AppSubmittalsRoute
+  '/workload': typeof AppWorkloadRoute
+  '/projects/$id': typeof AppProjectsIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/ai': typeof AppAiRoute
+  '/apps': typeof AppAppsRoute
+  '/client': typeof AppClientRoute
+  '/documents': typeof AppDocumentsRoute
+  '/executive': typeof AppExecutiveRoute
+  '/financials': typeof AppFinancialsRoute
+  '/hr': typeof AppHrRoute
+  '/meetings': typeof AppMeetingsRoute
+  '/ncr': typeof AppNcrRoute
+  '/pm': typeof AppPmRoute
+  '/projects': typeof AppProjectsRouteWithChildren
+  '/reports': typeof AppReportsRoute
+  '/resources': typeof AppResourcesRoute
+  '/rfi': typeof AppRfiRoute
+  '/settings': typeof AppSettingsRoute
+  '/submittals': typeof AppSubmittalsRoute
+  '/workload': typeof AppWorkloadRoute
+  '/': typeof AppIndexRoute
+  '/projects/$id': typeof AppProjectsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/ai': typeof AppAiRoute
+  '/_app/apps': typeof AppAppsRoute
+  '/_app/client': typeof AppClientRoute
+  '/_app/documents': typeof AppDocumentsRoute
+  '/_app/executive': typeof AppExecutiveRoute
+  '/_app/financials': typeof AppFinancialsRoute
+  '/_app/hr': typeof AppHrRoute
+  '/_app/meetings': typeof AppMeetingsRoute
+  '/_app/ncr': typeof AppNcrRoute
+  '/_app/pm': typeof AppPmRoute
+  '/_app/projects': typeof AppProjectsRouteWithChildren
+  '/_app/reports': typeof AppReportsRoute
+  '/_app/resources': typeof AppResourcesRoute
+  '/_app/rfi': typeof AppRfiRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/submittals': typeof AppSubmittalsRoute
+  '/_app/workload': typeof AppWorkloadRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/projects/$id': typeof AppProjectsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/ai'
+    | '/apps'
+    | '/client'
+    | '/documents'
+    | '/executive'
+    | '/financials'
+    | '/hr'
+    | '/meetings'
+    | '/ncr'
+    | '/pm'
+    | '/projects'
+    | '/reports'
+    | '/resources'
+    | '/rfi'
+    | '/settings'
+    | '/submittals'
+    | '/workload'
+    | '/projects/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/ai'
+    | '/apps'
+    | '/client'
+    | '/documents'
+    | '/executive'
+    | '/financials'
+    | '/hr'
+    | '/meetings'
+    | '/ncr'
+    | '/pm'
+    | '/projects'
+    | '/reports'
+    | '/resources'
+    | '/rfi'
+    | '/settings'
+    | '/submittals'
+    | '/workload'
+    | '/'
+    | '/projects/$id'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/ai'
+    | '/_app/apps'
+    | '/_app/client'
+    | '/_app/documents'
+    | '/_app/executive'
+    | '/_app/financials'
+    | '/_app/hr'
+    | '/_app/meetings'
+    | '/_app/ncr'
+    | '/_app/pm'
+    | '/_app/projects'
+    | '/_app/reports'
+    | '/_app/resources'
+    | '/_app/rfi'
+    | '/_app/settings'
+    | '/_app/submittals'
+    | '/_app/workload'
+    | '/_app/'
+    | '/_app/projects/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/workload': {
+      id: '/_app/workload'
+      path: '/workload'
+      fullPath: '/workload'
+      preLoaderRoute: typeof AppWorkloadRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/submittals': {
+      id: '/_app/submittals'
+      path: '/submittals'
+      fullPath: '/submittals'
+      preLoaderRoute: typeof AppSubmittalsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/rfi': {
+      id: '/_app/rfi'
+      path: '/rfi'
+      fullPath: '/rfi'
+      preLoaderRoute: typeof AppRfiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/resources': {
+      id: '/_app/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof AppResourcesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports': {
+      id: '/_app/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/projects': {
+      id: '/_app/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pm': {
+      id: '/_app/pm'
+      path: '/pm'
+      fullPath: '/pm'
+      preLoaderRoute: typeof AppPmRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ncr': {
+      id: '/_app/ncr'
+      path: '/ncr'
+      fullPath: '/ncr'
+      preLoaderRoute: typeof AppNcrRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/meetings': {
+      id: '/_app/meetings'
+      path: '/meetings'
+      fullPath: '/meetings'
+      preLoaderRoute: typeof AppMeetingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/hr': {
+      id: '/_app/hr'
+      path: '/hr'
+      fullPath: '/hr'
+      preLoaderRoute: typeof AppHrRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/financials': {
+      id: '/_app/financials'
+      path: '/financials'
+      fullPath: '/financials'
+      preLoaderRoute: typeof AppFinancialsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/executive': {
+      id: '/_app/executive'
+      path: '/executive'
+      fullPath: '/executive'
+      preLoaderRoute: typeof AppExecutiveRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/documents': {
+      id: '/_app/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof AppDocumentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/client': {
+      id: '/_app/client'
+      path: '/client'
+      fullPath: '/client'
+      preLoaderRoute: typeof AppClientRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/apps': {
+      id: '/_app/apps'
+      path: '/apps'
+      fullPath: '/apps'
+      preLoaderRoute: typeof AppAppsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ai': {
+      id: '/_app/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AppAiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/projects/$id': {
+      id: '/_app/projects/$id'
+      path: '/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof AppProjectsIdRouteImport
+      parentRoute: typeof AppProjectsRoute
     }
   }
 }
 
+interface AppProjectsRouteChildren {
+  AppProjectsIdRoute: typeof AppProjectsIdRoute
+}
+
+const AppProjectsRouteChildren: AppProjectsRouteChildren = {
+  AppProjectsIdRoute: AppProjectsIdRoute,
+}
+
+const AppProjectsRouteWithChildren = AppProjectsRoute._addFileChildren(
+  AppProjectsRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppAiRoute: typeof AppAiRoute
+  AppAppsRoute: typeof AppAppsRoute
+  AppClientRoute: typeof AppClientRoute
+  AppDocumentsRoute: typeof AppDocumentsRoute
+  AppExecutiveRoute: typeof AppExecutiveRoute
+  AppFinancialsRoute: typeof AppFinancialsRoute
+  AppHrRoute: typeof AppHrRoute
+  AppMeetingsRoute: typeof AppMeetingsRoute
+  AppNcrRoute: typeof AppNcrRoute
+  AppPmRoute: typeof AppPmRoute
+  AppProjectsRoute: typeof AppProjectsRouteWithChildren
+  AppReportsRoute: typeof AppReportsRoute
+  AppResourcesRoute: typeof AppResourcesRoute
+  AppRfiRoute: typeof AppRfiRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppSubmittalsRoute: typeof AppSubmittalsRoute
+  AppWorkloadRoute: typeof AppWorkloadRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAiRoute: AppAiRoute,
+  AppAppsRoute: AppAppsRoute,
+  AppClientRoute: AppClientRoute,
+  AppDocumentsRoute: AppDocumentsRoute,
+  AppExecutiveRoute: AppExecutiveRoute,
+  AppFinancialsRoute: AppFinancialsRoute,
+  AppHrRoute: AppHrRoute,
+  AppMeetingsRoute: AppMeetingsRoute,
+  AppNcrRoute: AppNcrRoute,
+  AppPmRoute: AppPmRoute,
+  AppProjectsRoute: AppProjectsRouteWithChildren,
+  AppReportsRoute: AppReportsRoute,
+  AppResourcesRoute: AppResourcesRoute,
+  AppRfiRoute: AppRfiRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppSubmittalsRoute: AppSubmittalsRoute,
+  AppWorkloadRoute: AppWorkloadRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
