@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppWorkloadRouteImport } from './routes/_app.workload'
 import { Route as AppSubmittalsRouteImport } from './routes/_app.submittals'
 import { Route as AppResourcesRouteImport } from './routes/_app.resources'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
@@ -33,6 +34,11 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWorkloadRoute = AppWorkloadRouteImport.update({
+  id: '/workload',
+  path: '/workload',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSubmittalsRoute = AppSubmittalsRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof AppProjectsRouteWithChildren
   '/resources': typeof AppResourcesRoute
   '/submittals': typeof AppSubmittalsRoute
+  '/workload': typeof AppWorkloadRoute
   '/projects/$id': typeof AppProjectsIdRoute
 }
 export interface FileRoutesByTo {
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/projects': typeof AppProjectsRouteWithChildren
   '/resources': typeof AppResourcesRoute
   '/submittals': typeof AppSubmittalsRoute
+  '/workload': typeof AppWorkloadRoute
   '/': typeof AppIndexRoute
   '/projects/$id': typeof AppProjectsIdRoute
 }
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/_app/projects': typeof AppProjectsRouteWithChildren
   '/_app/resources': typeof AppResourcesRoute
   '/_app/submittals': typeof AppSubmittalsRoute
+  '/_app/workload': typeof AppWorkloadRoute
   '/_app/': typeof AppIndexRoute
   '/_app/projects/$id': typeof AppProjectsIdRoute
 }
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/resources'
     | '/submittals'
+    | '/workload'
     | '/projects/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/resources'
     | '/submittals'
+    | '/workload'
     | '/'
     | '/projects/$id'
   id:
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/_app/projects'
     | '/_app/resources'
     | '/_app/submittals'
+    | '/_app/workload'
     | '/_app/'
     | '/_app/projects/$id'
   fileRoutesById: FileRoutesById
@@ -180,6 +192,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/workload': {
+      id: '/_app/workload'
+      path: '/workload'
+      fullPath: '/workload'
+      preLoaderRoute: typeof AppWorkloadRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/submittals': {
@@ -261,6 +280,7 @@ interface AppRouteChildren {
   AppProjectsRoute: typeof AppProjectsRouteWithChildren
   AppResourcesRoute: typeof AppResourcesRoute
   AppSubmittalsRoute: typeof AppSubmittalsRoute
+  AppWorkloadRoute: typeof AppWorkloadRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -272,6 +292,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProjectsRoute: AppProjectsRouteWithChildren,
   AppResourcesRoute: AppResourcesRoute,
   AppSubmittalsRoute: AppSubmittalsRoute,
+  AppWorkloadRoute: AppWorkloadRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
