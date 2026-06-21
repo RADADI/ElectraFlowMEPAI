@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppWorkloadRouteImport } from './routes/_app.workload'
 import { Route as AppSubmittalsRouteImport } from './routes/_app.submittals'
+import { Route as AppRfiRouteImport } from './routes/_app.rfi'
 import { Route as AppResourcesRouteImport } from './routes/_app.resources'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppPmRouteImport } from './routes/_app.pm'
@@ -47,6 +48,11 @@ const AppWorkloadRoute = AppWorkloadRouteImport.update({
 const AppSubmittalsRoute = AppSubmittalsRouteImport.update({
   id: '/submittals',
   path: '/submittals',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRfiRoute = AppRfiRouteImport.update({
+  id: '/rfi',
+  path: '/rfi',
   getParentRoute: () => AppRoute,
 } as any)
 const AppResourcesRoute = AppResourcesRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/pm': typeof AppPmRoute
   '/projects': typeof AppProjectsRouteWithChildren
   '/resources': typeof AppResourcesRoute
+  '/rfi': typeof AppRfiRoute
   '/submittals': typeof AppSubmittalsRoute
   '/workload': typeof AppWorkloadRoute
   '/projects/$id': typeof AppProjectsIdRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/pm': typeof AppPmRoute
   '/projects': typeof AppProjectsRouteWithChildren
   '/resources': typeof AppResourcesRoute
+  '/rfi': typeof AppRfiRoute
   '/submittals': typeof AppSubmittalsRoute
   '/workload': typeof AppWorkloadRoute
   '/': typeof AppIndexRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/_app/pm': typeof AppPmRoute
   '/_app/projects': typeof AppProjectsRouteWithChildren
   '/_app/resources': typeof AppResourcesRoute
+  '/_app/rfi': typeof AppRfiRoute
   '/_app/submittals': typeof AppSubmittalsRoute
   '/_app/workload': typeof AppWorkloadRoute
   '/_app/': typeof AppIndexRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/pm'
     | '/projects'
     | '/resources'
+    | '/rfi'
     | '/submittals'
     | '/workload'
     | '/projects/$id'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/pm'
     | '/projects'
     | '/resources'
+    | '/rfi'
     | '/submittals'
     | '/workload'
     | '/'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/_app/pm'
     | '/_app/projects'
     | '/_app/resources'
+    | '/_app/rfi'
     | '/_app/submittals'
     | '/_app/workload'
     | '/_app/'
@@ -242,6 +254,13 @@ declare module '@tanstack/react-router' {
       path: '/submittals'
       fullPath: '/submittals'
       preLoaderRoute: typeof AppSubmittalsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/rfi': {
+      id: '/_app/rfi'
+      path: '/rfi'
+      fullPath: '/rfi'
+      preLoaderRoute: typeof AppRfiRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/resources': {
@@ -339,6 +358,7 @@ interface AppRouteChildren {
   AppPmRoute: typeof AppPmRoute
   AppProjectsRoute: typeof AppProjectsRouteWithChildren
   AppResourcesRoute: typeof AppResourcesRoute
+  AppRfiRoute: typeof AppRfiRoute
   AppSubmittalsRoute: typeof AppSubmittalsRoute
   AppWorkloadRoute: typeof AppWorkloadRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -354,6 +374,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPmRoute: AppPmRoute,
   AppProjectsRoute: AppProjectsRouteWithChildren,
   AppResourcesRoute: AppResourcesRoute,
+  AppRfiRoute: AppRfiRoute,
   AppSubmittalsRoute: AppSubmittalsRoute,
   AppWorkloadRoute: AppWorkloadRoute,
   AppIndexRoute: AppIndexRoute,
