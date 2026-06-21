@@ -1,11 +1,27 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, AppWindow, FolderKanban, FileText, FileCheck2, BarChart3,
-  Wallet, Users, CalendarClock, UserCog, Briefcase, Sparkles, MessageSquare,
-  AlertTriangle, ClipboardList, FileBarChart, UserSquare2, Settings, Zap,
+  LayoutDashboard,
+  AppWindow,
+  FolderKanban,
+  FileText,
+  FileCheck2,
+  BarChart3,
+  Wallet,
+  Users,
+  CalendarClock,
+  UserCog,
+  Briefcase,
+  Sparkles,
+  MessageSquare,
+  AlertTriangle,
+  ClipboardList,
+  FileBarChart,
+  UserSquare2,
+  Settings,
+  Zap,
 } from "lucide-react";
 
-const nav = [
+export const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/apps", label: "App Store", icon: AppWindow },
   { to: "/projects", label: "Projects", icon: FolderKanban },
@@ -26,41 +42,62 @@ const nav = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
+export function SidebarBrand() {
+  return (
+    <div className="h-14 flex items-center gap-2 px-4 border-b border-sidebar-border shrink-0">
+      <div className="h-8 w-8 rounded-md bg-sidebar-primary grid place-items-center text-sidebar-primary-foreground">
+        <Zap className="h-5 w-5" />
+      </div>
+      <div className="leading-tight">
+        <div className="font-semibold text-sm">ElectraFlow AI</div>
+        <div className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">
+          Enterprise
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <nav className="flex-1 overflow-y-auto py-2">
+      {navItems.map(({ to, label, icon: Icon }) => {
+        const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+        return (
+          <Link
+            key={to}
+            to={to}
+            onClick={onNavigate}
+            className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors border-l-2 ${
+              active
+                ? "bg-sidebar-accent text-sidebar-accent-foreground border-sidebar-primary"
+                : "border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+            }`}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+export function SidebarFooter() {
+  return (
+    <div className="p-3 border-t border-sidebar-border text-[11px] text-sidebar-foreground/60">
+      v1.0 · © ElectraFlow
+    </div>
+  );
+}
+
 export function Sidebar() {
-  const pathname = useRouterState({ select: s => s.location.pathname });
   return (
     <aside className="hidden lg:flex w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-      <div className="h-14 flex items-center gap-2 px-4 border-b border-sidebar-border">
-        <div className="h-8 w-8 rounded-md bg-sidebar-primary grid place-items-center text-sidebar-primary-foreground">
-          <Zap className="h-5 w-5" />
-        </div>
-        <div className="leading-tight">
-          <div className="font-semibold text-sm">MEPFlow AI</div>
-          <div className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">Enterprise</div>
-        </div>
-      </div>
-      <nav className="flex-1 overflow-y-auto py-2">
-        {nav.map(({ to, label, icon: Icon }) => {
-          const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-          return (
-            <Link
-              key={to}
-              to={to}
-              className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors border-l-2 ${
-                active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground border-sidebar-primary"
-                  : "border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-              }`}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="p-3 border-t border-sidebar-border text-[11px] text-sidebar-foreground/60">
-        v1.0 · © MEPFlow
-      </div>
+      <SidebarBrand />
+      <NavLinks />
+      <SidebarFooter />
     </aside>
   );
 }

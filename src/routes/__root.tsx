@@ -79,10 +79,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "MEPFlow AI — Enterprise MEP Engineering Platform" },
-      { name: "description", content: "AI-powered project, submittal, and resource management for MEP engineering teams." },
-      { property: "og:title", content: "MEPFlow AI" },
-      { property: "og:description", content: "Enterprise platform for Electrical/MEP design firms." },
+      { title: "ElectraFlow AI — Enterprise Electrical Intelligence Platform" },
+      {
+        name: "description",
+        content:
+          "AI-powered project, submittal, and resource management for MEP engineering teams.",
+      },
+      { property: "og:title", content: "ElectraFlow AI" },
+      {
+        property: "og:description",
+        content: "Enterprise platform for Electrical/MEP design firms.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
