@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppSubmittalsRouteImport } from './routes/_app.submittals'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
+import { Route as AppPmRouteImport } from './routes/_app.pm'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppAppsRouteImport } from './routes/_app.apps'
 import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
@@ -42,6 +43,11 @@ const AppProjectsRoute = AppProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPmRoute = AppPmRouteImport.update({
+  id: '/pm',
+  path: '/pm',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDocumentsRoute = AppDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/apps': typeof AppAppsRoute
   '/documents': typeof AppDocumentsRoute
+  '/pm': typeof AppPmRoute
   '/projects': typeof AppProjectsRouteWithChildren
   '/submittals': typeof AppSubmittalsRoute
   '/projects/$id': typeof AppProjectsIdRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/apps': typeof AppAppsRoute
   '/documents': typeof AppDocumentsRoute
+  '/pm': typeof AppPmRoute
   '/projects': typeof AppProjectsRouteWithChildren
   '/submittals': typeof AppSubmittalsRoute
   '/': typeof AppIndexRoute
@@ -82,6 +90,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/apps': typeof AppAppsRoute
   '/_app/documents': typeof AppDocumentsRoute
+  '/_app/pm': typeof AppPmRoute
   '/_app/projects': typeof AppProjectsRouteWithChildren
   '/_app/submittals': typeof AppSubmittalsRoute
   '/_app/': typeof AppIndexRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/apps'
     | '/documents'
+    | '/pm'
     | '/projects'
     | '/submittals'
     | '/projects/$id'
@@ -102,6 +112,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/apps'
     | '/documents'
+    | '/pm'
     | '/projects'
     | '/submittals'
     | '/'
@@ -112,6 +123,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/apps'
     | '/_app/documents'
+    | '/_app/pm'
     | '/_app/projects'
     | '/_app/submittals'
     | '/_app/'
@@ -160,6 +172,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pm': {
+      id: '/_app/pm'
+      path: '/pm'
+      fullPath: '/pm'
+      preLoaderRoute: typeof AppPmRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/documents': {
       id: '/_app/documents'
       path: '/documents'
@@ -199,6 +218,7 @@ const AppProjectsRouteWithChildren = AppProjectsRoute._addFileChildren(
 interface AppRouteChildren {
   AppAppsRoute: typeof AppAppsRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
+  AppPmRoute: typeof AppPmRoute
   AppProjectsRoute: typeof AppProjectsRouteWithChildren
   AppSubmittalsRoute: typeof AppSubmittalsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -207,6 +227,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAppsRoute: AppAppsRoute,
   AppDocumentsRoute: AppDocumentsRoute,
+  AppPmRoute: AppPmRoute,
   AppProjectsRoute: AppProjectsRouteWithChildren,
   AppSubmittalsRoute: AppSubmittalsRoute,
   AppIndexRoute: AppIndexRoute,
