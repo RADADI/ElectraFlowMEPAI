@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppWorkloadRouteImport } from './routes/_app.workload'
 import { Route as AppSubmittalsRouteImport } from './routes/_app.submittals'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRfiRouteImport } from './routes/_app.rfi'
 import { Route as AppResourcesRouteImport } from './routes/_app.resources'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
@@ -52,6 +53,11 @@ const AppWorkloadRoute = AppWorkloadRouteImport.update({
 const AppSubmittalsRoute = AppSubmittalsRouteImport.update({
   id: '/submittals',
   path: '/submittals',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRfiRoute = AppRfiRouteImport.update({
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AppReportsRoute
   '/resources': typeof AppResourcesRoute
   '/rfi': typeof AppRfiRoute
+  '/settings': typeof AppSettingsRoute
   '/submittals': typeof AppSubmittalsRoute
   '/workload': typeof AppWorkloadRoute
   '/projects/$id': typeof AppProjectsIdRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/resources': typeof AppResourcesRoute
   '/rfi': typeof AppRfiRoute
+  '/settings': typeof AppSettingsRoute
   '/submittals': typeof AppSubmittalsRoute
   '/workload': typeof AppWorkloadRoute
   '/': typeof AppIndexRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/_app/reports': typeof AppReportsRoute
   '/_app/resources': typeof AppResourcesRoute
   '/_app/rfi': typeof AppRfiRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/_app/submittals': typeof AppSubmittalsRoute
   '/_app/workload': typeof AppWorkloadRoute
   '/_app/': typeof AppIndexRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/resources'
     | '/rfi'
+    | '/settings'
     | '/submittals'
     | '/workload'
     | '/projects/$id'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/resources'
     | '/rfi'
+    | '/settings'
     | '/submittals'
     | '/workload'
     | '/'
@@ -256,6 +267,7 @@ export interface FileRouteTypes {
     | '/_app/reports'
     | '/_app/resources'
     | '/_app/rfi'
+    | '/_app/settings'
     | '/_app/submittals'
     | '/_app/workload'
     | '/_app/'
@@ -302,6 +314,13 @@ declare module '@tanstack/react-router' {
       path: '/submittals'
       fullPath: '/submittals'
       preLoaderRoute: typeof AppSubmittalsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/rfi': {
@@ -439,6 +458,7 @@ interface AppRouteChildren {
   AppReportsRoute: typeof AppReportsRoute
   AppResourcesRoute: typeof AppResourcesRoute
   AppRfiRoute: typeof AppRfiRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppSubmittalsRoute: typeof AppSubmittalsRoute
   AppWorkloadRoute: typeof AppWorkloadRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -459,6 +479,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReportsRoute: AppReportsRoute,
   AppResourcesRoute: AppResourcesRoute,
   AppRfiRoute: AppRfiRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppSubmittalsRoute: AppSubmittalsRoute,
   AppWorkloadRoute: AppWorkloadRoute,
   AppIndexRoute: AppIndexRoute,
