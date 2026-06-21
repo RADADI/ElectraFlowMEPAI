@@ -19,6 +19,7 @@ import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppPmRouteImport } from './routes/_app.pm'
 import { Route as AppHrRouteImport } from './routes/_app.hr'
 import { Route as AppFinancialsRouteImport } from './routes/_app.financials'
+import { Route as AppExecutiveRouteImport } from './routes/_app.executive'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppAppsRouteImport } from './routes/_app.apps'
 import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
@@ -72,6 +73,11 @@ const AppFinancialsRoute = AppFinancialsRouteImport.update({
   path: '/financials',
   getParentRoute: () => AppRoute,
 } as any)
+const AppExecutiveRoute = AppExecutiveRouteImport.update({
+  id: '/executive',
+  path: '/executive',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDocumentsRoute = AppDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/apps': typeof AppAppsRoute
   '/documents': typeof AppDocumentsRoute
+  '/executive': typeof AppExecutiveRoute
   '/financials': typeof AppFinancialsRoute
   '/hr': typeof AppHrRoute
   '/pm': typeof AppPmRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/apps': typeof AppAppsRoute
   '/documents': typeof AppDocumentsRoute
+  '/executive': typeof AppExecutiveRoute
   '/financials': typeof AppFinancialsRoute
   '/hr': typeof AppHrRoute
   '/pm': typeof AppPmRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/apps': typeof AppAppsRoute
   '/_app/documents': typeof AppDocumentsRoute
+  '/_app/executive': typeof AppExecutiveRoute
   '/_app/financials': typeof AppFinancialsRoute
   '/_app/hr': typeof AppHrRoute
   '/_app/pm': typeof AppPmRoute
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/apps'
     | '/documents'
+    | '/executive'
     | '/financials'
     | '/hr'
     | '/pm'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/apps'
     | '/documents'
+    | '/executive'
     | '/financials'
     | '/hr'
     | '/pm'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/apps'
     | '/_app/documents'
+    | '/_app/executive'
     | '/_app/financials'
     | '/_app/hr'
     | '/_app/pm'
@@ -255,6 +267,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancialsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/executive': {
+      id: '/_app/executive'
+      path: '/executive'
+      fullPath: '/executive'
+      preLoaderRoute: typeof AppExecutiveRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/documents': {
       id: '/_app/documents'
       path: '/documents'
@@ -294,6 +313,7 @@ const AppProjectsRouteWithChildren = AppProjectsRoute._addFileChildren(
 interface AppRouteChildren {
   AppAppsRoute: typeof AppAppsRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
+  AppExecutiveRoute: typeof AppExecutiveRoute
   AppFinancialsRoute: typeof AppFinancialsRoute
   AppHrRoute: typeof AppHrRoute
   AppPmRoute: typeof AppPmRoute
@@ -307,6 +327,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAppsRoute: AppAppsRoute,
   AppDocumentsRoute: AppDocumentsRoute,
+  AppExecutiveRoute: AppExecutiveRoute,
   AppFinancialsRoute: AppFinancialsRoute,
   AppHrRoute: AppHrRoute,
   AppPmRoute: AppPmRoute,
