@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppSubmittalsRouteImport } from './routes/_app.submittals'
+import { Route as AppResourcesRouteImport } from './routes/_app.resources'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppPmRouteImport } from './routes/_app.pm'
 import { Route as AppFinancialsRouteImport } from './routes/_app.financials'
@@ -37,6 +38,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppSubmittalsRoute = AppSubmittalsRouteImport.update({
   id: '/submittals',
   path: '/submittals',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResourcesRoute = AppResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProjectsRoute = AppProjectsRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/financials': typeof AppFinancialsRoute
   '/pm': typeof AppPmRoute
   '/projects': typeof AppProjectsRouteWithChildren
+  '/resources': typeof AppResourcesRoute
   '/submittals': typeof AppSubmittalsRoute
   '/projects/$id': typeof AppProjectsIdRoute
 }
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/financials': typeof AppFinancialsRoute
   '/pm': typeof AppPmRoute
   '/projects': typeof AppProjectsRouteWithChildren
+  '/resources': typeof AppResourcesRoute
   '/submittals': typeof AppSubmittalsRoute
   '/': typeof AppIndexRoute
   '/projects/$id': typeof AppProjectsIdRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/_app/financials': typeof AppFinancialsRoute
   '/_app/pm': typeof AppPmRoute
   '/_app/projects': typeof AppProjectsRouteWithChildren
+  '/_app/resources': typeof AppResourcesRoute
   '/_app/submittals': typeof AppSubmittalsRoute
   '/_app/': typeof AppIndexRoute
   '/_app/projects/$id': typeof AppProjectsIdRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/financials'
     | '/pm'
     | '/projects'
+    | '/resources'
     | '/submittals'
     | '/projects/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/financials'
     | '/pm'
     | '/projects'
+    | '/resources'
     | '/submittals'
     | '/'
     | '/projects/$id'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '/_app/financials'
     | '/_app/pm'
     | '/_app/projects'
+    | '/_app/resources'
     | '/_app/submittals'
     | '/_app/'
     | '/_app/projects/$id'
@@ -175,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/submittals'
       fullPath: '/submittals'
       preLoaderRoute: typeof AppSubmittalsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/resources': {
+      id: '/_app/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof AppResourcesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/projects': {
@@ -240,6 +259,7 @@ interface AppRouteChildren {
   AppFinancialsRoute: typeof AppFinancialsRoute
   AppPmRoute: typeof AppPmRoute
   AppProjectsRoute: typeof AppProjectsRouteWithChildren
+  AppResourcesRoute: typeof AppResourcesRoute
   AppSubmittalsRoute: typeof AppSubmittalsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -250,6 +270,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFinancialsRoute: AppFinancialsRoute,
   AppPmRoute: AppPmRoute,
   AppProjectsRoute: AppProjectsRouteWithChildren,
+  AppResourcesRoute: AppResourcesRoute,
   AppSubmittalsRoute: AppSubmittalsRoute,
   AppIndexRoute: AppIndexRoute,
 }
