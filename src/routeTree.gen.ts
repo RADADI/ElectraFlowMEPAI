@@ -25,6 +25,7 @@ import { Route as AppHrRouteImport } from './routes/_app.hr'
 import { Route as AppFinancialsRouteImport } from './routes/_app.financials'
 import { Route as AppExecutiveRouteImport } from './routes/_app.executive'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
+import { Route as AppClientRouteImport } from './routes/_app.client'
 import { Route as AppAppsRouteImport } from './routes/_app.apps'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
 import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
@@ -108,6 +109,11 @@ const AppDocumentsRoute = AppDocumentsRouteImport.update({
   path: '/documents',
   getParentRoute: () => AppRoute,
 } as any)
+const AppClientRoute = AppClientRouteImport.update({
+  id: '/client',
+  path: '/client',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppsRoute = AppAppsRouteImport.update({
   id: '/apps',
   path: '/apps',
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/ai': typeof AppAiRoute
   '/apps': typeof AppAppsRoute
+  '/client': typeof AppClientRoute
   '/documents': typeof AppDocumentsRoute
   '/executive': typeof AppExecutiveRoute
   '/financials': typeof AppFinancialsRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/ai': typeof AppAiRoute
   '/apps': typeof AppAppsRoute
+  '/client': typeof AppClientRoute
   '/documents': typeof AppDocumentsRoute
   '/executive': typeof AppExecutiveRoute
   '/financials': typeof AppFinancialsRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/ai': typeof AppAiRoute
   '/_app/apps': typeof AppAppsRoute
+  '/_app/client': typeof AppClientRoute
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/executive': typeof AppExecutiveRoute
   '/_app/financials': typeof AppFinancialsRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/ai'
     | '/apps'
+    | '/client'
     | '/documents'
     | '/executive'
     | '/financials'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/ai'
     | '/apps'
+    | '/client'
     | '/documents'
     | '/executive'
     | '/financials'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/ai'
     | '/_app/apps'
+    | '/_app/client'
     | '/_app/documents'
     | '/_app/executive'
     | '/_app/financials'
@@ -369,6 +381,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDocumentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/client': {
+      id: '/_app/client'
+      path: '/client'
+      fullPath: '/client'
+      preLoaderRoute: typeof AppClientRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/apps': {
       id: '/_app/apps'
       path: '/apps'
@@ -408,6 +427,7 @@ const AppProjectsRouteWithChildren = AppProjectsRoute._addFileChildren(
 interface AppRouteChildren {
   AppAiRoute: typeof AppAiRoute
   AppAppsRoute: typeof AppAppsRoute
+  AppClientRoute: typeof AppClientRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppExecutiveRoute: typeof AppExecutiveRoute
   AppFinancialsRoute: typeof AppFinancialsRoute
@@ -427,6 +447,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAiRoute: AppAiRoute,
   AppAppsRoute: AppAppsRoute,
+  AppClientRoute: AppClientRoute,
   AppDocumentsRoute: AppDocumentsRoute,
   AppExecutiveRoute: AppExecutiveRoute,
   AppFinancialsRoute: AppFinancialsRoute,
