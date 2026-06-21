@@ -17,6 +17,7 @@ import { Route as AppSubmittalsRouteImport } from './routes/_app.submittals'
 import { Route as AppResourcesRouteImport } from './routes/_app.resources'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppPmRouteImport } from './routes/_app.pm'
+import { Route as AppHrRouteImport } from './routes/_app.hr'
 import { Route as AppFinancialsRouteImport } from './routes/_app.financials'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppAppsRouteImport } from './routes/_app.apps'
@@ -61,6 +62,11 @@ const AppPmRoute = AppPmRouteImport.update({
   path: '/pm',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHrRoute = AppHrRouteImport.update({
+  id: '/hr',
+  path: '/hr',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFinancialsRoute = AppFinancialsRouteImport.update({
   id: '/financials',
   path: '/financials',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/apps': typeof AppAppsRoute
   '/documents': typeof AppDocumentsRoute
   '/financials': typeof AppFinancialsRoute
+  '/hr': typeof AppHrRoute
   '/pm': typeof AppPmRoute
   '/projects': typeof AppProjectsRouteWithChildren
   '/resources': typeof AppResourcesRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/apps': typeof AppAppsRoute
   '/documents': typeof AppDocumentsRoute
   '/financials': typeof AppFinancialsRoute
+  '/hr': typeof AppHrRoute
   '/pm': typeof AppPmRoute
   '/projects': typeof AppProjectsRouteWithChildren
   '/resources': typeof AppResourcesRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/_app/apps': typeof AppAppsRoute
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/financials': typeof AppFinancialsRoute
+  '/_app/hr': typeof AppHrRoute
   '/_app/pm': typeof AppPmRoute
   '/_app/projects': typeof AppProjectsRouteWithChildren
   '/_app/resources': typeof AppResourcesRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/documents'
     | '/financials'
+    | '/hr'
     | '/pm'
     | '/projects'
     | '/resources'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/documents'
     | '/financials'
+    | '/hr'
     | '/pm'
     | '/projects'
     | '/resources'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/_app/apps'
     | '/_app/documents'
     | '/_app/financials'
+    | '/_app/hr'
     | '/_app/pm'
     | '/_app/projects'
     | '/_app/resources'
@@ -229,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPmRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/hr': {
+      id: '/_app/hr'
+      path: '/hr'
+      fullPath: '/hr'
+      preLoaderRoute: typeof AppHrRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/financials': {
       id: '/_app/financials'
       path: '/financials'
@@ -276,6 +295,7 @@ interface AppRouteChildren {
   AppAppsRoute: typeof AppAppsRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppFinancialsRoute: typeof AppFinancialsRoute
+  AppHrRoute: typeof AppHrRoute
   AppPmRoute: typeof AppPmRoute
   AppProjectsRoute: typeof AppProjectsRouteWithChildren
   AppResourcesRoute: typeof AppResourcesRoute
@@ -288,6 +308,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAppsRoute: AppAppsRoute,
   AppDocumentsRoute: AppDocumentsRoute,
   AppFinancialsRoute: AppFinancialsRoute,
+  AppHrRoute: AppHrRoute,
   AppPmRoute: AppPmRoute,
   AppProjectsRoute: AppProjectsRouteWithChildren,
   AppResourcesRoute: AppResourcesRoute,
