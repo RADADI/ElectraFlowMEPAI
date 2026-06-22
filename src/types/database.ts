@@ -54,7 +54,19 @@ export type ReviewAction =
   | "rejected"
   | "for_record_only";
 
-export type RFIStatus = "open" | "under_review" | "answered" | "closed" | "cancelled";
+export type RFIStatus =
+  | "draft"
+  | "submitted"
+  | "open"
+  | "under_review"
+  | "answered"
+  | "closed"
+  | "reopened"
+  | "voided"
+  | "archived"
+  | "cancelled";
+
+export type RFIResponseType = "clarification" | "answer" | "request_more_info" | "internal_note";
 
 export type NCRStatus =
   | "open"
@@ -394,7 +406,10 @@ export interface RFI {
   project_id: string;
   rfi_number: string;
   title: string;
+  /** Legacy field; Phase 8 uses question for the actual question text. */
   description: string;
+  /** Phase 8: the RFI question (backfilled from description for existing rows). */
+  question: string | null;
   discipline: string | null;
   status: RFIStatus;
   priority: ProjectPriority;
@@ -405,6 +420,15 @@ export interface RFI {
   answered_date: string | null;
   cost_impact: boolean;
   schedule_impact: boolean;
+  /** Phase 8: incremented on workflow mutations — optimistic-lock key. */
+  revision_number: number;
+  /** Phase 8: saved before archive/void so restore can return to original status. */
+  previous_status: RFIStatus | null;
+  submitted_at: string | null;
+  closed_at: string | null;
+  reopened_at: string | null;
+  /** Phase 8: required when Admin voids an RFI. */
+  void_reason: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -421,11 +445,27 @@ export interface RFIResponse {
   rfi_id: string;
   respondent_id: string;
   response_text: string;
+  /** Phase 8: clarification | answer | request_more_info | internal_note */
+  response_type: RFIResponseType;
   attachments: string[] | null;
   responded_at: string;
   created_at: string;
+  updated_at: string;
   deleted_at: string | null;
 }
+
+/** Phase 8: links an RFI to an existing project document (no file duplication). */
+export interface RFIDocument {
+  id: string;
+  organization_id: string;
+  rfi_id: string;
+  document_id: string;
+  attached_by: string | null;
+  created_at: string;
+  deleted_at: string | null;
+}
+
+export type RFIDocumentInsert = Omit<RFIDocument, "id" | "created_at">;
 
 // ─── NCR ─────────────────────────────────────────────────────────────────────
 
@@ -672,8 +712,13 @@ export interface Database {
       };
       rfi_responses: {
         Row: RFIResponse;
-        Insert: Omit<RFIResponse, "id" | "created_at">;
-        Update: never;
+        Insert: Omit<RFIResponse, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<RFIResponse, "id" | "created_at">>;
+      };
+      rfi_documents: {
+        Row: RFIDocument;
+        Insert: RFIDocumentInsert;
+        Update: Partial<RFIDocumentInsert>;
       };
       ncr: {
         Row: NCR;

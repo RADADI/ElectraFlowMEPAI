@@ -67,6 +67,7 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
     "Senior Electrical Engineer",
     "Electrical Engineer",
     "QA/QC Engineer",
+    "Executive",
   ],
   "/ncr": ["Admin", "Project Manager", "Senior Electrical Engineer", "QA/QC Engineer"],
   "/meetings": ["Admin", "Project Manager"],
