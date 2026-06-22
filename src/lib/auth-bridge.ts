@@ -1,33 +1,45 @@
 /**
- * Auth bridge — Phase 5 (Clerk JWT ↔ Supabase RLS)
+ * Auth bridge — Phase 6 (Documents, Invites, User Admin)
  *
- * Provides identity primitives for the service layer.
- *
- * AUTHORITY RULES (Phase 5):
+ * AUTHORITY RULES:
  *   • Clerk proves WHO the user is (authentication).
  *   • The database (profiles table) determines WHAT they can do (authorization).
  *   • profiles.role is the single source of truth — never Clerk metadata,
  *     never localStorage role, never JWT role claims.
  *
- * Profile cache:
- *   • ClerkAuthProvider calls bootstrapProfile() on sign-in.
- *   • On success, setCachedProfile() stores the verified DB values.
- *   • All identity getters prefer the cache (DB-authoritative values).
- *   • clearCachedProfile() is called on sign-out.
- *   • In mock/demo mode the cache is never populated; getters fall back to
- *     localStorage so the demo experience is unchanged.
+ * Phase 6 additions:
+ *   • CachedProfile now includes profileId (the UUID PK of profiles row).
+ *   • getCurrentUserId() returns the UUID (for DB FK references like created_by).
+ *   • getClerkUserId() returns the Clerk text ID (for auth.jwt() ->> 'sub' RLS).
+ *   • bootstrapProfile() checks is_active (deactivated user → 'disabled' reason).
+ *   • bootstrapProfile() falls back to sessionStorage invite token when no
+ *     profile exists and no orgIdFromMetadata is available.
+ *   • sha256Hex() is exported for use by invite.service.ts.
  *
  * Circular-import note:
- *   Phase 4.1 imported getStoredRole/getStoredUser from auth-context.tsx.
- *   That would create a circular dep now that auth-context.tsx imports from
- *   this file.  Instead, this module reads localStorage directly using the
- *   same stable key strings.
+ *   This module reads localStorage directly to avoid circular deps with
+ *   auth-context.tsx (which imports from this file).
  */
 
 import type { AppRole } from "@/lib/permissions";
 import { supabase, IS_SUPABASE_CONFIGURED } from "@/lib/supabase";
 
-// ─── Local localStorage readers (no auth-context import to avoid circular dep) ─
+// ─── Crypto utility ───────────────────────────────────────────────────────────
+
+/**
+ * Returns the SHA-256 hex digest of a UTF-8 string.
+ * Used for hashing invite tokens before storing in the database.
+ * The Web Crypto API is available in all modern browsers and Node.js ≥ 15.
+ */
+export async function sha256Hex(text: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// ─── Local localStorage readers (avoids circular dep with auth-context.tsx) ──
 
 const _ROLE_KEY = "mep-role";
 const _USER_KEY = "mep-user";
@@ -63,7 +75,9 @@ function _readUser(): _LocalUser | null {
  * clerkUserId which is the auth identity, not an authorization value).
  */
 export interface CachedProfile {
-  /** auth.jwt() ->> 'sub' — the Clerk user ID. */
+  /** profiles.id — UUID primary key.  Used for all DB FK references (created_by, etc.). */
+  profileId: string;
+  /** auth.jwt() ->> 'sub' — the Clerk user ID (text, not UUID). */
   clerkUserId: string;
   /** profiles.organization_id — DB authoritative. */
   organizationId: string;
@@ -93,31 +107,35 @@ export function clearCachedProfile(): void {
 // ─── Identity primitives ──────────────────────────────────────────────────────
 
 /**
- * Returns the current user's Clerk user ID when signed in via Clerk.
- * Falls back to the mock user's id in demo/normal mock mode.
+ * Returns the current user's profiles.id UUID.
+ * Use this for all DB FK columns (created_by, updated_by, approver_id, etc.).
+ *
+ * Falls back to the mock user's id string in demo/mock mode
+ * (which won't be a UUID, but mock mode never hits Supabase).
  */
 export function getCurrentUserId(): string | null {
-  if (_profile) return _profile.clerkUserId;
+  if (_profile) return _profile.profileId; // UUID — correct FK reference
   const user = _readUser();
   return user?.id ?? null;
 }
 
 /**
+ * Returns the Clerk user ID ("user_2abc…").
+ * Used only for auth context (auth.jwt() ->> 'sub').
+ * Never use for DB FK columns.
+ */
+export function getClerkUserId(): string | null {
+  if (_profile) return _profile.clerkUserId;
+  return null;
+}
+
+/**
  * Returns the organisation ID from the DB profile (Clerk mode) or
  * env/localStorage (mock/demo mode).
- *
- * In Clerk mode this is authoritative — sourced from profiles.organization_id.
- * In mock mode it is used only for demo data filtering; no Supabase query uses it.
- *
- * Production org resolution:
- *   Clerk JWT → Supabase profile bootstrap → profiles.organization_id → cached here.
- *   Direct localStorage reads are only for the mock path.
  */
 export function getCurrentOrganizationId(): string | null {
-  // DB profile is authoritative when Clerk is active
   if (_profile) return _profile.organizationId;
 
-  // Mock/demo fallback: optional env hint for dev annotations (not for auth)
   const envOrgId = (import.meta.env.VITE_SUPABASE_ORG_ID as string | undefined)?.trim();
   if (envOrgId) return envOrgId;
 
@@ -130,32 +148,20 @@ export function getCurrentOrganizationId(): string | null {
 
 /**
  * Returns the current role.
- *
  * Clerk mode: profiles.role — DB authoritative.
- *   The ClerkAuthProvider syncs this to localStorage after bootstrap so the
- *   existing RBAC engine (which reads localStorage) stays consistent with the DB.
- *
  * Mock/demo mode: localStorage mep-role.
- *
- * Never trust JWT role claims, Clerk metadata, or client-side values for
- * authorization.  RLS enforces the DB role independently.
  */
 export function getCurrentUserRole(): AppRole | null {
-  if (_profile) return _profile.role; // DB authoritative
-  return _readRole(); // mock fallback
+  if (_profile) return _profile.role;
+  return _readRole();
 }
 
 // ─── Session state ────────────────────────────────────────────────────────────
 
-/** True when any authenticated session is active (Clerk or mock). */
 export function isAuthenticated(): boolean {
   return !!_profile || _readRole() !== null;
 }
 
-/**
- * True when the active session was started via the Demo Login path.
- * Demo sessions NEVER hit Supabase — always use mock/sessionStorage.
- */
 export function isDemoSession(): boolean {
   const user = _readUser();
   return user?.isDemo === true;
@@ -189,32 +195,34 @@ export interface BootstrapResult {
   profile?: CachedProfile;
   /**
    * Reason for failure (when ok === false):
-   *   'no_org'    — profile exists but organization_id is null
-   *   'not_found' — profile does not exist and cannot be auto-created
-   *   'error'     — network/DB failure
+   *   'no_org'        — profile exists but organization_id is null
+   *   'not_found'     — no profile and no invite / org metadata available
+   *   'disabled'      — profile.is_active === false (Admin deactivated the user)
+   *   'email_mismatch'— invite exists but email doesn't match Clerk identity
+   *   'error'         — network/DB failure
    */
-  reason?: "no_org" | "not_found" | "error";
+  reason?: "no_org" | "not_found" | "disabled" | "email_mismatch" | "error";
   error?: string;
 }
 
 /**
  * Fetches or creates the Supabase profile for the signed-in Clerk user.
  *
- * Called once per sign-in by ClerkAuthProvider.  Must NOT be called for
- * demo/mock sessions.
+ * Called once per sign-in by ClerkAuthProvider.
+ * Must NOT be called for demo/mock sessions.
  *
- * Authority rules (CRITICAL):
- *   • DB profile values are used as-is — role/org_id are NEVER overwritten
- *     from Clerk metadata on subsequent logins.
- *   • Clerk public metadata `organization_id` is ONLY used during the very
- *     first bootstrap (profile creation) and only when no profile exists yet.
- *   • After creation, the database is the sole source of truth.
+ * Invite bootstrap (Phase 6):
+ *   When a user signs up via an invite link, the invite page stores the raw
+ *   token in sessionStorage under "mep_invite_token".  bootstrapProfile reads
+ *   this, hashes it, and queries the invitations table to find the matching
+ *   invite.  On match, the profile is created with the invite's org + role and
+ *   the invite is marked accepted.  The token is cleared from sessionStorage.
  */
 export async function bootstrapProfile(params: {
   clerkUserId: string;
   email: string;
   fullName: string;
-  /** From Clerk public metadata — used ONLY for initial profile creation. */
+  /** From Clerk public metadata — ONLY used for initial profile creation. */
   orgIdFromMetadata?: string | null;
 }): Promise<BootstrapResult> {
   if (!IS_SUPABASE_CONFIGURED || !supabase) {
@@ -223,12 +231,10 @@ export async function bootstrapProfile(params: {
 
   const { clerkUserId, email, fullName, orgIdFromMetadata } = params;
 
-  // ── Step 1: Look up existing profile ──────────────────────────────────────
-  // The RLS policy "profiles: user can read own profile" allows this query
-  // even before the org is known (breaks the chicken-and-egg bootstrap problem).
+  // ── Step 1: Look up existing profile by clerk_user_id ─────────────────────
   const { data: existing, error: fetchErr } = await supabase
     .from("profiles")
-    .select("clerk_user_id, organization_id, role, full_name, email")
+    .select("id, clerk_user_id, organization_id, role, full_name, email, is_active")
     .eq("clerk_user_id", clerkUserId)
     .maybeSingle();
 
@@ -237,12 +243,23 @@ export async function bootstrapProfile(params: {
   }
 
   if (existing) {
+    // Check deactivated first
+    if (existing.is_active === false) {
+      return {
+        ok: false,
+        reason: "disabled",
+        error: "Your account has been deactivated. Please contact your administrator.",
+      };
+    }
+
     if (!existing.organization_id) {
       return { ok: false, reason: "no_org" };
     }
+
     return {
       ok: true,
       profile: {
+        profileId: existing.id as string,
         clerkUserId: existing.clerk_user_id as string,
         organizationId: existing.organization_id as string,
         role: existing.role as AppRole,
@@ -252,19 +269,94 @@ export async function bootstrapProfile(params: {
     };
   }
 
-  // ── Step 2: Profile not found — try auto-create (bootstrap-only) ──────────
-  // org_id comes from Clerk public metadata (set by Admin in Clerk Dashboard).
-  // This is ONLY used here; all subsequent reads come from the DB profile.
+  // ── Step 2: No profile — try invite token from sessionStorage (Phase 6) ───
+  const rawToken =
+    typeof window !== "undefined" ? sessionStorage.getItem("mep_invite_token") : null;
+
+  if (rawToken) {
+    try {
+      const tokenHash = await sha256Hex(rawToken);
+
+      const { data: invite } = await supabase
+        .from("invitations")
+        .select("id, organization_id, role, email")
+        .eq("token_hash", tokenHash)
+        .eq("status", "pending")
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+
+      if (invite) {
+        // Email must match the invite
+        if (invite.email.toLowerCase() !== email.toLowerCase()) {
+          return {
+            ok: false,
+            reason: "email_mismatch",
+            error: `This invitation was sent to ${invite.email}. Please sign in with that email address.`,
+          };
+        }
+
+        // Create profile with invite's org + role
+        const { data: created, error: createErr } = await supabase
+          .from("profiles")
+          .insert({
+            clerk_user_id: clerkUserId,
+            organization_id: invite.organization_id,
+            full_name: fullName || email.split("@")[0] || "User",
+            email,
+            role: invite.role,
+          })
+          .select("id, clerk_user_id, organization_id, role, full_name, email")
+          .single();
+
+        if (createErr) {
+          return {
+            ok: false,
+            reason: "error",
+            error: `Failed to create profile from invite: ${createErr.message}`,
+          };
+        }
+
+        // Mark invite accepted (best-effort, don't fail bootstrap if this errors)
+        await supabase
+          .from("invitations")
+          .update({
+            status: "accepted",
+            accepted_at: new Date().toISOString(),
+            accepted_by_clerk_id: clerkUserId,
+          })
+          .eq("id", invite.id);
+
+        // Clear invite token
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("mep_invite_token");
+        }
+
+        return {
+          ok: true,
+          profile: {
+            profileId: created.id as string,
+            clerkUserId: created.clerk_user_id as string,
+            organizationId: created.organization_id as string,
+            role: created.role as AppRole,
+            fullName: created.full_name as string,
+            email: created.email as string,
+          },
+        };
+      }
+    } catch {
+      // Hash failure is non-fatal; fall through to orgIdFromMetadata path
+    }
+  }
+
+  // ── Step 3: No profile, no invite — try orgIdFromMetadata (Clerk metadata) ─
   if (!orgIdFromMetadata) {
     return {
       ok: false,
       reason: "not_found",
-      error:
-        "No profile found. Ask your Admin to invite you or set organization_id in your Clerk user metadata.",
+      error: "No profile found and no invitation available. Ask your Admin to invite you.",
     };
   }
 
-  // Default role is the minimum privilege.  Admin elevates via the database.
   const { data: created, error: createErr } = await supabase
     .from("profiles")
     .insert({
@@ -274,7 +366,7 @@ export async function bootstrapProfile(params: {
       email,
       role: "electrical_engineer",
     })
-    .select("clerk_user_id, organization_id, role, full_name, email")
+    .select("id, clerk_user_id, organization_id, role, full_name, email")
     .single();
 
   if (createErr) {
@@ -292,6 +384,7 @@ export async function bootstrapProfile(params: {
   return {
     ok: true,
     profile: {
+      profileId: created.id as string,
       clerkUserId: created.clerk_user_id as string,
       organizationId: created.organization_id as string,
       role: created.role as AppRole,
@@ -312,7 +405,6 @@ export function setOrganizationId(orgId: string): void {
   }
 }
 
-/** Clears the mock org-id cache.  clearAuthStorage() calls this implicitly. */
 export function clearOrganizationId(): void {
   try {
     localStorage.removeItem("mep-org-id");

@@ -79,6 +79,8 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
   ],
   "/client-portal": ["Admin", "Client"],
   "/settings": ["Admin"],
+  /** Phase 6: user management — Admin only. */
+  "/users": ["Admin"],
 };
 
 /**

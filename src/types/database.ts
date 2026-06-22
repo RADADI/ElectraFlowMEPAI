@@ -89,7 +89,7 @@ export type OrganizationInsert = Omit<Organization, "id" | "created_at" | "updat
 export type OrganizationUpdate = Partial<OrganizationInsert>;
 
 export interface Profile {
-  id: string; // Matches Clerk user ID in Phase 4
+  id: string;
   organization_id: string;
   full_name: string;
   email: string;
@@ -100,6 +100,8 @@ export interface Profile {
   avatar_url: string | null;
   is_active: boolean;
   onboarding_done: boolean;
+  /** Added by Phase 5 migration — links Clerk identity to this profile row. */
+  clerk_user_id: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -124,15 +126,21 @@ export interface Invitation {
   email: string;
   role: UserRole;
   status: InvitationStatus;
-  token: string;
+  /** SHA-256 hex hash of the raw invite token.  Raw token is NEVER stored. */
+  token_hash: string;
   invited_by: string;
   expires_at: string;
   accepted_at: string | null;
+  /** Clerk user ID of whoever accepted the invite. */
+  accepted_by_clerk_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export type InvitationInsert = Omit<Invitation, "id" | "created_at" | "updated_at" | "accepted_at">;
+export type InvitationInsert = Omit<
+  Invitation,
+  "id" | "created_at" | "updated_at" | "accepted_at" | "accepted_by_clerk_id"
+>;
 
 export interface AuditLog {
   id: string;
@@ -240,10 +248,17 @@ export interface Document {
   document_type: string | null;
   revision: string;
   status: DocumentStatus;
+  /** @deprecated Use storage_path. Kept for Phase 3 backwards compat. */
   file_url: string | null;
   file_size_bytes: number | null;
   mime_type: string | null;
   description: string | null;
+  /** Supabase Storage path — use storage.service to generate signed URLs. */
+  storage_path: string | null;
+  /** Original sanitized filename at upload time. */
+  file_name: string | null;
+  /** Optimistic-lock counter incremented on each new version upload. */
+  current_version_number: number;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -260,7 +275,12 @@ export interface DocumentVersion {
   document_id: string;
   version_number: number;
   revision: string;
+  /** @deprecated Use storage_path. */
   file_url: string | null;
+  storage_path: string | null;
+  file_name: string | null;
+  file_size_bytes: number | null;
+  mime_type: string | null;
   change_summary: string | null;
   created_at: string;
   created_by: string | null;
@@ -417,6 +437,44 @@ export interface NCRAction {
   deleted_at: string | null;
 }
 
+// ─── Document Shares ──────────────────────────────────────────────────────────
+
+export interface DocumentShare {
+  id: string;
+  organization_id: string;
+  document_id: string;
+  shared_with_profile_id: string;
+  shared_by: string;
+  expires_at: string | null;
+  created_at: string;
+  deleted_at: string | null;
+}
+
+export type DocumentShareInsert = Omit<DocumentShare, "id" | "created_at">;
+
+// ─── Upload Sessions ──────────────────────────────────────────────────────────
+
+export type UploadSessionStatus =
+  | "pending"
+  | "uploading"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface UploadSession {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  document_id: string | null;
+  status: UploadSessionStatus;
+  progress_percent: number;
+  storage_path: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Employees / Resources ────────────────────────────────────────────────────
 
 export interface Employee {
@@ -541,6 +599,16 @@ export interface Database {
         Row: DocumentApproval;
         Insert: Omit<DocumentApproval, "id" | "created_at">;
         Update: never;
+      };
+      document_shares: {
+        Row: DocumentShare;
+        Insert: DocumentShareInsert;
+        Update: Partial<DocumentShareInsert>;
+      };
+      upload_sessions: {
+        Row: UploadSession;
+        Insert: Omit<UploadSession, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<UploadSession, "id" | "created_at">>;
       };
       submittals: {
         Row: Submittal;

@@ -12,9 +12,16 @@ import { ok, mockOk, fail, type ServiceResult } from "./_base.service";
 
 const MOCK_LOG: AuditLog[] = [] as AuditLog[];
 
-export async function logAction(
-  payload: Omit<AuditLogInsert, "organization_id" | "user_id">,
-): Promise<ServiceResult<AuditLog>> {
+type LogActionPayload = {
+  action: string;
+  resource_type: string;
+  resource_id?: string | null;
+  old_data?: Record<string, unknown> | null;
+  new_data?: Record<string, unknown> | null;
+  ip_address?: string | null;
+};
+
+export async function logAction(payload: LogActionPayload): Promise<ServiceResult<AuditLog>> {
   const { organizationId, userId } = getSessionContext();
 
   if (!IS_SUPABASE_CONFIGURED || !supabase) {
@@ -26,8 +33,8 @@ export async function logAction(
       action: payload.action,
       resource_type: payload.resource_type,
       resource_id: payload.resource_id ?? null,
-      old_data: payload.old_data ?? null,
-      new_data: payload.new_data ?? null,
+      old_data: (payload.old_data as Record<string, unknown>) ?? null,
+      new_data: (payload.new_data as Record<string, unknown>) ?? null,
       ip_address: payload.ip_address ?? null,
     };
     MOCK_LOG.unshift(entry);

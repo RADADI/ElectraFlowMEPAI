@@ -41,6 +41,7 @@ export const navItems = [
   { to: "/meetings", label: "Meetings", icon: ClipboardList },
   { to: "/reports", label: "Reports", icon: FileBarChart },
   { to: "/client-portal", label: "Client Portal", icon: UserSquare2 },
+  { to: "/users", label: "Users", icon: UserCog },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 

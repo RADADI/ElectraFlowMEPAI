@@ -38,15 +38,26 @@ export interface StoredUser {
 /**
  * Profile bootstrap status — Phase 5.
  *
- * idle       — Clerk not yet loaded (initial render)
- * loading    — Fetching / creating the Supabase profile row
- * ok         — Profile found with org, JWT wired, real DB ops are available
- * no_org     — Profile exists but organization_id is null
- * not_found  — No profile and auto-create failed (no org metadata)
- * error      — Network / DB failure; show retry
- * mock       — Mock / demo auth mode (no Clerk JWT involved)
+ * idle           — Clerk not yet loaded (initial render)
+ * loading         — Fetching / creating the Supabase profile row
+ * ok              — Profile found with org, JWT wired, real DB ops are available
+ * no_org          — Profile exists but organization_id is null
+ * not_found       — No profile and auto-create failed (no org metadata or invite)
+ * disabled        — profiles.is_active === false (Admin deactivated the user)
+ * email_mismatch  — Invite found but email doesn't match signed-in Clerk identity
+ * error           — Network / DB failure; show retry
+ * mock            — Mock / demo auth mode (no Clerk JWT involved)
  */
-export type ProfileStatus = "idle" | "loading" | "ok" | "no_org" | "not_found" | "error" | "mock";
+export type ProfileStatus =
+  | "idle"
+  | "loading"
+  | "ok"
+  | "no_org"
+  | "not_found"
+  | "disabled"
+  | "email_mismatch"
+  | "error"
+  | "mock";
 
 export interface AuthState {
   isSignedIn: boolean;
@@ -489,6 +500,27 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
         message={
           bootstrapError ||
           "No profile found for this account. Ask your Admin to invite you or add your profile to the database."
+        }
+        onSignOut={doSignOut}
+      />
+    );
+  }
+
+  if (isLoaded && isSignedIn && profileStatus === "disabled") {
+    return (
+      <AccountNotConfiguredScreen
+        message="Your account has been deactivated by an administrator. Please contact your organisation admin for assistance."
+        onSignOut={doSignOut}
+      />
+    );
+  }
+
+  if (isLoaded && isSignedIn && profileStatus === "email_mismatch") {
+    return (
+      <AccountNotConfiguredScreen
+        message={
+          bootstrapError ||
+          "The invitation was issued to a different email address. Sign in with the invited email or ask your Admin for a new invite."
         }
         onSignOut={doSignOut}
       />

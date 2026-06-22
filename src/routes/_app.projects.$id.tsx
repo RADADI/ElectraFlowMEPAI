@@ -169,7 +169,9 @@ function ProjectDetailPage() {
   const { data: milestones = [], isLoading: milestonesLoading } = useProjectMilestones(
     project ? id : "",
   );
-  const { data: docs = [], isLoading: docsLoading } = useDocuments(project ? id : undefined);
+  const { data: docs = [], isLoading: docsLoading } = useDocuments(
+    project ? { projectId: id } : {},
+  );
   const { data: subs = [], isLoading: subsLoading } = useSubmittals(project ? id : undefined);
 
   const [editOpen, setEditOpen] = useState(false);
