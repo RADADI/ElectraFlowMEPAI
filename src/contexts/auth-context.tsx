@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { useUser, useClerk } from "@clerk/react";
+import { useUser, useClerk, useSession } from "@clerk/react";
 import type { AppRole } from "@/lib/permissions";
+import { setClerkTokenGetter, setJwtReady } from "@/lib/supabase";
+import { setCachedProfile, clearCachedProfile, bootstrapProfile } from "@/lib/auth-bridge";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,19 @@ export interface StoredUser {
   isDemo?: boolean;
 }
 
+/**
+ * Profile bootstrap status — Phase 5.
+ *
+ * idle       — Clerk not yet loaded (initial render)
+ * loading    — Fetching / creating the Supabase profile row
+ * ok         — Profile found with org, JWT wired, real DB ops are available
+ * no_org     — Profile exists but organization_id is null
+ * not_found  — No profile and auto-create failed (no org metadata)
+ * error      — Network / DB failure; show retry
+ * mock       — Mock / demo auth mode (no Clerk JWT involved)
+ */
+export type ProfileStatus = "idle" | "loading" | "ok" | "no_org" | "not_found" | "error" | "mock";
+
 export interface AuthState {
   isSignedIn: boolean;
   isLoaded: boolean;
@@ -43,6 +58,10 @@ export interface AuthState {
   imageUrl: string | null;
   initials: string;
   isDemo: boolean;
+  /** True when Clerk JWT is wired and the DB profile is verified. */
+  isJwtReady: boolean;
+  /** Profile bootstrap status.  Components can show appropriate error UI. */
+  profileStatus: ProfileStatus;
   signOut: () => void;
 }
 
@@ -274,12 +293,85 @@ function readSession() {
   return { role: getStoredRole(), user: getStoredUser() };
 }
 
+// ─── Clerk profile loading / error screens ───────────────────────────────────
+
+function ProfileLoadingScreen() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="mt-4 text-sm text-muted-foreground">Loading your workspace…</p>
+      </div>
+    </div>
+  );
+}
+
+function AccountNotConfiguredScreen({
+  message,
+  onRetry,
+  onSignOut,
+}: {
+  message: string;
+  onRetry?: () => void;
+  onSignOut: () => void;
+}) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md space-y-4 rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+          <svg
+            className="h-6 w-6 text-destructive"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+            />
+          </svg>
+        </div>
+
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">Account not configured</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{message}</p>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-2 pt-2">
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Retry
+            </button>
+          )}
+          <button
+            onClick={onSignOut}
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Clerk provider ───────────────────────────────────────────────────────────
 
 function ClerkAuthProvider({ children }: { children: ReactNode }) {
   const { user, isSignedIn, isLoaded } = useUser();
+  const { session } = useSession();
   const { signOut: clerkSignOut } = useClerk();
 
+  const [jwtReady, setJwtReadyState] = useState(false);
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>("idle");
+  const [bootstrapError, setBootstrapError] = useState<string>("");
+
+  // Refresh on mock auth changes (e.g. demo login alongside Clerk)
   const [, setTick] = useState(0);
   useEffect(() => {
     function refresh() {
@@ -289,8 +381,141 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(AUTH_CHANGE_EVENT, refresh);
   }, []);
 
-  const role = getStoredRole();
+  // ── Phase 5: Wire Clerk JWT → Supabase + bootstrap DB profile ─────────────
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!isSignedIn || !session || !user) {
+      // Signed out — clear everything
+      setClerkTokenGetter(null);
+      setJwtReady(false);
+      setJwtReadyState(false);
+      clearCachedProfile();
+      setProfileStatus("idle");
+      setBootstrapError("");
+      return;
+    }
+
+    // Wire the Clerk token getter so every Supabase request gets a fresh JWT.
+    // session.getToken() handles Clerk-side caching and refresh transparently.
+    setClerkTokenGetter(() => session.getToken({ template: "supabase" }));
+
+    // Bootstrap profile: fetch from DB; auto-create if first login.
+    setProfileStatus("loading");
+    setBootstrapError("");
+
+    const orgIdFromMetadata =
+      (user.publicMetadata?.organization_id as string | undefined)?.trim() || null;
+
+    bootstrapProfile({
+      clerkUserId: user.id,
+      email: user.primaryEmailAddress?.emailAddress ?? "",
+      fullName: user.fullName ?? user.primaryEmailAddress?.emailAddress?.split("@")[0] ?? "User",
+      orgIdFromMetadata,
+    })
+      .then((result) => {
+        if (result.ok && result.profile) {
+          // Cache the DB-authoritative profile values
+          setCachedProfile(result.profile);
+
+          // Sync the DB role to localStorage so the existing RBAC engine
+          // (which reads localStorage via getStoredRole()) uses the DB value.
+          // This is the ONLY time we write role to localStorage from DB.
+          setStoredRole(result.profile.role);
+          notifyAuthChange();
+
+          // Signal to the project service that real DB ops are now available
+          setJwtReady(true);
+          setJwtReadyState(true);
+          setProfileStatus("ok");
+        } else {
+          setBootstrapError(result.error ?? "Unknown error");
+          setProfileStatus(result.reason ?? "error");
+          // Leave mep-role as the temporary placeholder — user sees error screen,
+          // not the app, so there's no RBAC risk.
+        }
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setBootstrapError(msg);
+        setProfileStatus("error");
+      });
+
+    return () => {
+      // Clean up on unmount or when the session changes
+      setClerkTokenGetter(null);
+      setJwtReady(false);
+      setJwtReadyState(false);
+      clearCachedProfile();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn, session?.id]);
+
+  // ── Phase 5: Ensure mep-role is set while bootstrap is loading ────────────
+  // The _app.tsx beforeLoad guard checks localStorage("mep-role").
+  // Without this, Clerk-signed-in users would be redirected to /login
+  // every time (because mep-role is cleared on sign-out).
+  // Set a minimum-privilege placeholder; the bootstrap replaces it with the DB role.
+  if (isLoaded && isSignedIn && typeof window !== "undefined" && !localStorage.getItem(ROLE_KEY)) {
+    localStorage.setItem(ROLE_KEY, "electrical_engineer");
+  }
+
+  // ── Handle blocking states (shown instead of the app) ─────────────────────
+  const doSignOut = () => {
+    clearAuthStorage();
+    clearCachedProfile();
+    setJwtReady(false);
+    setJwtReadyState(false);
+    setClerkTokenGetter(null);
+    clerkSignOut({ redirectUrl: "/login" });
+  };
+
+  if (isLoaded && isSignedIn && profileStatus === "loading") {
+    return <ProfileLoadingScreen />;
+  }
+
+  if (isLoaded && isSignedIn && profileStatus === "no_org") {
+    return (
+      <AccountNotConfiguredScreen
+        message="Your profile was found but is not assigned to an organisation. Ask your Admin to configure your account in the database."
+        onSignOut={doSignOut}
+      />
+    );
+  }
+
+  if (isLoaded && isSignedIn && profileStatus === "not_found") {
+    return (
+      <AccountNotConfiguredScreen
+        message={
+          bootstrapError ||
+          "No profile found for this account. Ask your Admin to invite you or add your profile to the database."
+        }
+        onSignOut={doSignOut}
+      />
+    );
+  }
+
+  if (isLoaded && isSignedIn && profileStatus === "error") {
+    return (
+      <AccountNotConfiguredScreen
+        message={
+          bootstrapError ||
+          "Failed to load your account profile. Check your network connection and try again."
+        }
+        onRetry={() => {
+          setProfileStatus("idle");
+          setBootstrapError("");
+          // Re-trigger the bootstrap effect
+          setTick((t) => t + 1);
+        }}
+        onSignOut={doSignOut}
+      />
+    );
+  }
+
+  // ── Derive display values ─────────────────────────────────────────────────
   const storedUser = getStoredUser();
+  const role = getStoredRole(); // DB role synced here on bootstrap success
 
   const displayName =
     user?.fullName ||
@@ -310,10 +535,9 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
     imageUrl: user?.imageUrl || null,
     initials: toInitials(displayName) || "EF",
     isDemo: storedUser?.isDemo ?? false,
-    signOut: () => {
-      clearAuthStorage();
-      clerkSignOut({ redirectUrl: "/login" });
-    },
+    isJwtReady: jwtReady,
+    profileStatus,
+    signOut: doSignOut,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -349,6 +573,9 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
     imageUrl: null,
     initials,
     isDemo: storedUser?.isDemo ?? false,
+    // Mock mode never uses Clerk JWT or Supabase DB
+    isJwtReady: false,
+    profileStatus: "mock",
     signOut: () => {
       clearAuthStorage();
       window.location.replace("/login");

@@ -1,23 +1,27 @@
 /**
- * Supabase client — Phase 4.1 (security cleanup)
+ * Supabase client — Phase 5 (Clerk JWT ↔ Supabase RLS Bridge)
  *
- * Only the anon key is used client-side.  The service role key MUST NEVER
- * appear as a VITE_ variable — it would be embedded in the browser bundle,
- * bypass Row Level Security, and expose every row in every table to any user
- * who opens DevTools.
+ * Security model:
+ *   • Only the anon (public) key is shipped to the browser.
+ *   • Service role key MUST NEVER appear as a VITE_ variable.
+ *   • All data operations run through RLS; no bypass paths exist.
  *
- * Current state (Phase 4.1):
- *   IS_JWT_READY = false
- *   → Project service uses mock/sessionStorage data for all operations.
- *   → Supabase client is initialised (so schema/RLS can be tested in SQL
- *     editor) but is NOT queried for protected project data.
+ * JWT flow:
+ *   1. ClerkAuthProvider calls setClerkTokenGetter() with a function that
+ *      returns a fresh Clerk JWT signed with the Supabase JWT template.
+ *   2. The custom fetch wrapper below injects that token as Authorization
+ *      header on every Supabase HTTP request.
+ *   3. Supabase verifies the JWT with the JWKS / shared secret configured
+ *      in the Supabase Dashboard → Project Settings → API.
+ *   4. auth.jwt() ->> 'sub' resolves to the Clerk user ID in SQL.
+ *   5. get_my_org_id() and get_my_role() resolve via profiles.clerk_user_id.
+ *   6. RLS enforces org isolation and role-based access automatically.
  *
- * Phase 5 migration path:
- *   1. Wire Clerk JWT into the Supabase client:
- *        supabase.auth.setSession({ access_token: clerkToken, refresh_token: "" })
- *   2. Set IS_JWT_READY = true (or derive it from clerk.isSignedIn dynamically).
- *   3. The project service will automatically start using real Supabase queries.
- *   4. RLS policies resolve via auth.uid() → the anon key is now safe for CRUD.
+ * IS_JWT_READY lifecycle:
+ *   false (default) → project service uses mock/sessionStorage
+ *   true            → set by ClerkAuthProvider after profile bootstrap succeeds
+ *                     → project service uses real Supabase CRUD
+ *   false again     → set on sign-out; service reverts to mock
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -25,7 +29,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-// ─── Flags ────────────────────────────────────────────────────────────────────
+// ─── Static configuration flag ────────────────────────────────────────────────
 
 /**
  * True when VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY are both set.
@@ -37,33 +41,100 @@ export const IS_SUPABASE_CONFIGURED: boolean =
   typeof SUPABASE_ANON_KEY === "string" &&
   SUPABASE_ANON_KEY.trim().length > 0;
 
+// ─── Dynamic JWT readiness ────────────────────────────────────────────────────
+
 /**
- * Phase 4.1: always false — Clerk JWT ↔ Supabase auth is not wired yet.
+ * Module-level flag.  Written by ClerkAuthProvider; read by the project service.
  *
- * Until this is true, the project service routes ALL data through the
- * mock/sessionStorage layer, regardless of IS_SUPABASE_CONFIGURED.
- * This prevents the anon key from being used without auth.uid() set,
- * which would cause RLS to block queries silently.
+ * false → all DB operations use mock/sessionStorage (safe default)
+ * true  → Clerk JWT is set, profile is verified, real Supabase CRUD is enabled
  *
- * Phase 5 action: set this to true AFTER wiring Clerk JWT into Supabase auth.
- * The moment it is true the service layer automatically switches to real DB ops.
+ * NOT a static constant.  Dynamically set at runtime.
  */
-export const IS_JWT_READY: boolean = false;
-
-// ─── Anon client (the ONLY client shipped to the browser) ────────────────────
+let _isJwtReady = false;
 
 /**
- * Supabase anon client.  Safe to use in the browser.
+ * Called by ClerkAuthProvider after a successful profile bootstrap.
+ * Called with false on sign-out or token failure.
+ */
+export function setJwtReady(value: boolean): void {
+  _isJwtReady = value;
+}
+
+/**
+ * Returns true only when Clerk JWT is wired and DB profile is confirmed.
+ * Services call this at request time (not at import time) so they always
+ * read the current state.
+ */
+export function isJwtReady(): boolean {
+  return _isJwtReady;
+}
+
+// ─── Clerk token getter ───────────────────────────────────────────────────────
+
+type TokenGetter = () => Promise<string | null>;
+let _clerkTokenGetter: TokenGetter | null = null;
+
+/**
+ * Called by ClerkAuthProvider to wire the Clerk session token into the
+ * Supabase client's custom fetch.
  *
- * In Phase 4.1 this client is only used for:
- *   • Verifying connectivity (dev diagnostics below)
- *   • Future Phase 5 queries once auth.uid() is set via Clerk JWT
+ * The getter calls  session.getToken({ template: "supabase" })  which:
+ *   • Returns a fresh JWT signed with Clerk's private key.
+ *   • Handles Clerk-side token caching and refresh transparently.
+ *   • Returns null if no active session exists.
+ */
+export function setClerkTokenGetter(getter: TokenGetter | null): void {
+  _clerkTokenGetter = getter;
+}
+
+// ─── Supabase client (anon key + dynamic Clerk JWT injection) ─────────────────
+
+/**
+ * The ONLY Supabase client shipped to the browser.
  *
- * It is NOT used for project CRUD until IS_JWT_READY = true.
+ * The custom fetch wrapper injects the Clerk JWT on every request.
+ * When no getter is set (demo / mock mode), requests use the anon key only
+ * and RLS restricts all access to public-read-only rows (none in this schema).
+ *
+ * auth options:
+ *   persistSession: false  — Supabase's own session management is disabled.
+ *                            Clerk owns the session; we only pass its JWT.
+ *   autoRefreshToken: false — Clerk handles token refresh via session.getToken().
+ *   detectSessionInUrl: false — Not using Supabase's OAuth magic links.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const supabase: SupabaseClient<any> | null = IS_SUPABASE_CONFIGURED
-  ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!)
+  ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+      global: {
+        fetch: async (url: RequestInfo | URL, options: RequestInit = {}) => {
+          const headers = new Headers(options.headers);
+
+          // Inject the Clerk JWT when a getter is available.
+          // Called fresh on every request → tokens are always current.
+          if (_clerkTokenGetter) {
+            try {
+              const token = await _clerkTokenGetter();
+              if (token) {
+                headers.set("Authorization", `Bearer ${token}`);
+              }
+            } catch {
+              // Token fetch failed (e.g. session expired mid-flight).
+              // Proceed without the header — RLS will block protected data.
+              // ClerkAuthProvider's session listener will set isJwtReady(false)
+              // and trigger a re-login via Clerk.
+            }
+          }
+
+          return fetch(url, { ...options, headers });
+        },
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
   : null;
 
 // ─── Dev diagnostics ─────────────────────────────────────────────────────────
@@ -72,15 +143,13 @@ if (import.meta.env.DEV) {
   if (!IS_SUPABASE_CONFIGURED) {
     console.info(
       "[ElectraFlow] Supabase: not configured — all data uses mock/demo mode.",
-      "Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY in .env to configure.",
-    );
-  } else if (!IS_JWT_READY) {
-    console.info(
-      "[ElectraFlow] Supabase: configured ✓ but JWT auth not wired (Phase 4.1).",
-      "Project data uses mock/sessionStorage. Phase 5 wires Clerk JWT → real DB.",
-      SUPABASE_URL,
+      "Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY in .env to enable.",
     );
   } else {
-    console.info("[ElectraFlow] Supabase: configured + JWT ready ✓", SUPABASE_URL);
+    console.info(
+      "[ElectraFlow] Supabase: configured ✓",
+      SUPABASE_URL,
+      "— JWT readiness is dynamic (set by ClerkAuthProvider after profile bootstrap).",
+    );
   }
 }

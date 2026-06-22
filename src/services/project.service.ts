@@ -19,7 +19,7 @@
  *   • routeToSupabase() union type (replaced by simple shouldUseSupabase())
  */
 
-import { supabase, IS_SUPABASE_CONFIGURED, IS_JWT_READY } from "@/lib/supabase";
+import { supabase, IS_SUPABASE_CONFIGURED, isJwtReady } from "@/lib/supabase";
 import { getSessionContext, getCurrentUserId, getCurrentOrganizationId } from "@/lib/auth-bridge";
 import { getStoredUser } from "@/contexts/auth-context";
 import { projects as MOCK_PROJECTS, employees as MOCK_EMPLOYEES } from "@/lib/dummy-data";
@@ -45,14 +45,18 @@ import { ok, mockOk, fail, type ServiceResult } from "./_base.service";
  */
 function shouldUseSupabase(): boolean {
   const { isDemo } = getSessionContext();
+  // Demo sessions never hit Supabase — always mock/sessionStorage.
   if (isDemo) return false;
+  // Supabase not configured → mock.
   if (!IS_SUPABASE_CONFIGURED) return false;
-  if (!IS_JWT_READY) {
+  // JWT not ready → profile not bootstrapped yet → mock.
+  // isJwtReady() is a runtime check (not import-time), so it reflects the
+  // current session state: false before bootstrap, true after.
+  if (!isJwtReady()) {
     if (import.meta.env.DEV) {
       console.info(
-        "[ElectraFlow] Project service: Supabase configured but JWT auth not wired (Phase 4.1). " +
-          "Using mock/sessionStorage data safely. " +
-          "Phase 5 wires Clerk JWT → IS_JWT_READY = true → real DB ops.",
+        "[ElectraFlow] Project service: Supabase configured but JWT not ready. " +
+          "Using mock/sessionStorage. Bootstrap completes after Clerk sign-in.",
       );
     }
     return false;
