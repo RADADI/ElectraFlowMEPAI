@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { ShieldX, ArrowLeft, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -8,8 +8,28 @@ export const Route = createFileRoute("/unauthorized")({
   component: UnauthorizedPage,
 });
 
+/**
+ * Navigates back in router history if there is a previous in-app entry,
+ * otherwise falls back to the Dashboard ("/").
+ * Using router.history ensures we stay within the SPA and never leave the app.
+ */
+function useSafeBack() {
+  const router = useRouter();
+  return function goBack() {
+    // window.history.length === 1 means this is the first page visited.
+    // window.history.length === 2 typically means the only prior entry is /login.
+    // In both cases, going "back" would be unhelpful — go to Dashboard instead.
+    if (typeof window !== "undefined" && window.history.length > 2) {
+      router.history.back();
+    } else {
+      router.navigate({ to: "/" });
+    }
+  };
+}
+
 function UnauthorizedPage() {
   const { role, displayName } = useAuth();
+  const goBack = useSafeBack();
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background px-4">
@@ -37,8 +57,8 @@ function UnauthorizedPage() {
                 {" — "}
               </>
             )}
-            You don't have permission to view this page. Please contact your administrator if you
-            believe this is an error.
+            You don&apos;t have permission to view this page. Please contact your administrator if
+            you believe this is an error.
           </p>
         </div>
 
@@ -52,10 +72,11 @@ function UnauthorizedPage() {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-          <Button variant="outline" onClick={() => window.history.back()}>
+          <Button variant="outline" onClick={goBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Go back
           </Button>
+          {/* Link to "/" — Dashboard is accessible to every authenticated role */}
           <Button asChild>
             <Link to="/">
               <Home className="h-4 w-4 mr-2" />

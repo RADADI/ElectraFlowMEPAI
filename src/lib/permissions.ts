@@ -3,8 +3,22 @@ import type { Role } from "@/lib/dummy-data";
 export type AppRole = Role;
 
 /**
- * Maps each route path to the set of roles that may access it.
- * A route not listed here is treated as admin-only.
+ * Route → allowed roles.
+ * Every route under /_app must have an entry here.
+ * Omitted routes default to Admin-only via canAccess().
+ *
+ * Source of truth for Phase 2 (mock role data — no DB).
+ *
+ * Required access matrix (from product spec):
+ *
+ * Admin              → all pages
+ * Project Manager    → /, /projects, /documents, /submittals, /rfi, /ncr, /pm, /financials, /resources, /workload, /reports
+ * Senior Elec. Eng.  → /, /projects, /documents, /submittals, /rfi, /ncr, /reports
+ * Electrical Eng.    → /, /projects, /documents, /submittals, /rfi
+ * QA/QC Engineer     → /, /documents, /submittals, /rfi, /ncr, /reports
+ * HR                 → /, /hr, /resources, /workload
+ * Executive          → /, /executive, /pm, /financials, /resources, /workload, /reports
+ * Client             → /, /client-portal, /documents
  */
 export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
   "/": [
@@ -15,6 +29,7 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
     "QA/QC Engineer",
     "HR",
     "Executive",
+    "Client",
   ],
   "/apps": ["Admin"],
   "/ai": ["Admin", "Project Manager", "Senior Electrical Engineer", "Electrical Engineer"],
@@ -25,41 +40,80 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
     "Senior Electrical Engineer",
     "Electrical Engineer",
     "QA/QC Engineer",
+    "Client",
   ],
-  "/submittals": ["Admin", "Senior Electrical Engineer", "Electrical Engineer"],
-  "/pm": ["Admin", "Project Manager"],
-  "/financials": ["Admin", "Executive"],
-  "/resources": ["Admin", "Project Manager"],
-  "/workload": ["Admin", "Project Manager"],
+  "/submittals": [
+    "Admin",
+    "Project Manager",
+    "Senior Electrical Engineer",
+    "Electrical Engineer",
+    "QA/QC Engineer",
+  ],
+  "/pm": ["Admin", "Project Manager", "Executive"],
+  "/financials": ["Admin", "Project Manager", "Executive"],
+  "/resources": ["Admin", "Project Manager", "HR", "Executive"],
+  "/workload": ["Admin", "Project Manager", "HR", "Executive"],
   "/hr": ["Admin", "HR"],
   "/executive": ["Admin", "Executive"],
-  "/rfi": ["Admin", "Project Manager", "QA/QC Engineer"],
-  "/ncr": ["Admin", "Project Manager", "QA/QC Engineer"],
+  "/rfi": [
+    "Admin",
+    "Project Manager",
+    "Senior Electrical Engineer",
+    "Electrical Engineer",
+    "QA/QC Engineer",
+  ],
+  "/ncr": ["Admin", "Project Manager", "Senior Electrical Engineer", "QA/QC Engineer"],
   "/meetings": ["Admin", "Project Manager"],
-  "/reports": ["Admin", "Executive"],
+  "/reports": [
+    "Admin",
+    "Project Manager",
+    "Senior Electrical Engineer",
+    "QA/QC Engineer",
+    "Executive",
+  ],
   "/client-portal": ["Admin", "Client"],
   "/settings": ["Admin"],
 };
 
-/** Returns true if the given role is allowed to access the given pathname. */
+/**
+ * Returns true if the given role may access the given pathname.
+ * Admin bypasses all checks. Handles nested paths (e.g. /projects/p1 → /projects).
+ */
 export function canAccess(role: AppRole | null, pathname: string): boolean {
   if (!role) return false;
   if (role === "Admin") return true;
 
-  // Match exact or prefix (e.g. /projects/p1 → /projects)
-  const base = "/" + pathname.split("/").filter(Boolean)[0] || "/";
-  const key = base === "/" ? "/" : base;
+  // Derive the top-level segment: "/" stays "/", "/projects/p1" → "/projects"
+  const segments = pathname.split("/").filter(Boolean);
+  const key = segments.length === 0 ? "/" : `/${segments[0]}`;
 
   const allowed = ROUTE_PERMISSIONS[key];
   if (!allowed) return false;
   return allowed.includes(role);
 }
 
-/** Returns all route paths accessible by a role. */
+/** Returns all route paths the role can access. */
 export function accessibleRoutes(role: AppRole | null): string[] {
   if (!role) return [];
   if (role === "Admin") return Object.keys(ROUTE_PERMISSIONS);
   return Object.entries(ROUTE_PERMISSIONS)
     .filter(([, roles]) => roles.includes(role))
     .map(([path]) => path);
+}
+
+/**
+ * Returns the ideal landing page for a role after login.
+ * Falls back to "/" (Dashboard) which every authenticated role can access.
+ */
+export function getDefaultRoute(role: AppRole | null): string {
+  switch (role) {
+    case "Client":
+      return "/client-portal";
+    case "HR":
+      return "/hr";
+    case "Executive":
+      return "/executive";
+    default:
+      return "/";
+  }
 }

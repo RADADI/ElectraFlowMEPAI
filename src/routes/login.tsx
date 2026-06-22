@@ -14,6 +14,7 @@ import {
 import { Zap, Loader2 } from "lucide-react";
 import { ROLES } from "@/lib/dummy-data";
 import type { AppRole } from "@/lib/permissions";
+import { getDefaultRoute } from "@/lib/permissions";
 import { setStoredRole } from "@/contexts/auth-context";
 import { toast } from "sonner";
 
@@ -212,7 +213,7 @@ function ClerkLoginForm() {
         }
         setStoredRole(role);
         toast.success(`Signed in as ${role}`);
-        navigate({ to: "/" });
+        navigate({ to: getDefaultRoute(role) });
       } else {
         toast.error("Sign-in incomplete. Additional verification may be required.");
       }
@@ -258,7 +259,7 @@ function MockLoginForm() {
     setLoading(true);
     setStoredRole(role);
     toast.success(`Signed in as ${role}`);
-    navigate({ to: "/" });
+    navigate({ to: getDefaultRoute(role) });
     setLoading(false);
   }
 
