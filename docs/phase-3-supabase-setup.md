@@ -122,11 +122,75 @@ automatically uses Supabase or falls back to mock data.
 
 ---
 
-## Phase 4 checklist
+## Phase 4.1 — Security model (read before Phase 5)
 
-- [ ] Wire Clerk JWT as Supabase auth bearer (see `src/lib/supabase.ts` comments)
-- [ ] Replace `getCurrentUserId()` placeholder in `auth-bridge.ts` with Clerk user ID
-- [ ] Migrate Projects page to `useProjects` hook
+### Frontend uses anon key ONLY
+
+The browser bundle ships **one** Supabase client that uses the **anon (public) key**.
+This is safe because Row Level Security (RLS) limits what the anon key can access.
+
+```
+# ✅ Frontend — only these two keys
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhb...          # public / anon key
+```
+
+### Service role key is server-side ONLY
+
+The service role key bypasses **all** RLS policies. If it appears in a VITE_
+variable it is embedded in the browser bundle and visible to every user in
+DevTools → every row in every table is exposed.
+
+```
+# ❌ NEVER do this
+VITE_SUPABASE_SERVICE_ROLE_KEY=eyJhb...  # WRONG — this leaks into the bundle!
+
+# ✅ Use the service role key only in:
+#   • Supabase SQL Editor (paste schema.sql, seed.sql, admin queries)
+#   • A backend API (Node.js, Edge Functions, server actions)
+#   • Local CLI: supabase db push / supabase db reset
+```
+
+ElectraFlow removed the client-side `serviceClient` in Phase 4.1.
+The `src/lib/supabase.ts` file now exports only `supabase` (anon key).
+
+### IS_JWT_READY flag
+
+`IS_JWT_READY = false` in `src/lib/supabase.ts` is the single gate that controls
+whether the project service uses real Supabase queries or the mock/sessionStorage
+layer.
+
+Phase 4.1 sets it to `false` permanently because `auth.uid()` is `null` without
+Clerk JWT being set on the Supabase client — meaning RLS would block all queries
+even with the anon key.
+
+When Supabase is configured but `IS_JWT_READY = false` the Projects page shows:
+> "Supabase is configured, but authenticated database access is not connected yet
+> (Phase 5). Using mock data."
+
+This is intentional and safe. No data leaks between organisations.
+
+### Real DB CRUD requires Phase 5
+
+Phase 5 must:
+1. Call `supabase.auth.setSession({ access_token: clerkToken, refresh_token: "" })`
+   after the user signs in via Clerk. This sets `auth.uid()` on the Supabase client.
+2. Set `IS_JWT_READY = true` in `src/lib/supabase.ts`.
+3. Ensure `getCurrentOrganizationId()` in `auth-bridge.ts` reads the org ID from
+   the Clerk JWT claim (set in Clerk's session metadata on sign-in).
+
+Once those three steps are done, the project service automatically starts using
+real Supabase CRUD with full RLS enforcement — no other service changes needed.
+
+---
+
+## Phase 5 checklist
+
+- [ ] Wire Clerk JWT into Supabase: `supabase.auth.setSession({ access_token: clerkToken })`
+- [ ] Set `IS_JWT_READY = true` in `src/lib/supabase.ts`
+- [ ] Update `getCurrentOrganizationId()` in `auth-bridge.ts` to read from Clerk JWT claim
+- [ ] Replace `getCurrentUserId()` placeholder in `auth-bridge.ts` with real Clerk user ID
+- [ ] Confirm RLS policies resolve correctly with `auth.uid()` set (test in Supabase SQL Editor)
 - [ ] Migrate Documents page to `useDocuments` hook
 - [ ] Migrate Submittals page to `useSubmittals` hook
 - [ ] Migrate RFI page to `useRFIs` hook

@@ -197,6 +197,10 @@ export function validateLogin(email: string, password: string): LoginResult {
 
 // ─── High-level session helpers ───────────────────────────────────────────────
 
+// Key for the org-id cache written by auth-bridge.ts.
+// Cleared here to prevent the next user from inheriting a stale org context.
+const ORG_ID_CACHE_KEY = "mep-org-id";
+
 /** Notify all auth providers to re-read localStorage immediately. */
 export function notifyAuthChange() {
   if (typeof window !== "undefined") {
@@ -249,6 +253,9 @@ export function clearAuthStorage(): void {
   localStorage.removeItem(ROLE_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(ONBOARDING_KEY);
+  // Clear the cached org ID so the next user does not inherit a stale
+  // organisation context (auth-bridge.ts writes this key).
+  localStorage.removeItem(ORG_ID_CACHE_KEY);
   notifyAuthChange();
 }
 

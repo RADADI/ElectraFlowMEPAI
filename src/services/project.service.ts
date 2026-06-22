@@ -1,25 +1,26 @@
 /**
- * Project service — Phase 4 (real Supabase CRUD)
+ * Project service — Phase 4.1 (security cleanup)
  *
- * Routing rules (in priority order):
- *   1. Demo session  → always use mock/sessionStorage overlay.
- *   2. Supabase not configured → mock/sessionStorage overlay.
- *   3. Supabase configured but no org_id → explicit error (never silent mock).
- *   4. Supabase configured + org_id → real DB operations.
+ * Data routing rules (priority order):
+ *   1. Demo session                          → mock / sessionStorage overlay
+ *   2. Supabase not configured               → mock / sessionStorage overlay
+ *   3. Supabase configured, JWT NOT ready    → mock / sessionStorage overlay
+ *                                              + dev console info message
+ *   4. Supabase configured, JWT ready        → real Supabase CRUD (Phase 5+)
  *
- * For Phase 4 (before Clerk JWT, Phase 5):
- *   DB operations use `serviceClient` (service role, bypasses RLS) when available.
- *   Without `serviceClient`, RLS blocks the anon key → service returns an error
- *   asking the user to set VITE_SUPABASE_SERVICE_ROLE_KEY.
+ * Phase 4.1 reality: IS_JWT_READY = false → all requests use mock path.
  *
- * Mock mode features (when routing to mock):
- *   • sessionStorage overlay so create/update/archive survive within the session.
- *   • Role-based list filtering.
- *   • Demo-mode banner shown by UI (isMockData === true).
+ * The Supabase code stubs are kept in the Phase 5 branches so the migration
+ * is a single flag flip (IS_JWT_READY = true) once Clerk JWT is wired.
+ *
+ * Removed from Phase 4.0:
+ *   • serviceClient (service role key — was a client-side security risk)
+ *   • resolveOrganizationId() (depended on serviceClient)
+ *   • routeToSupabase() union type (replaced by simple shouldUseSupabase())
  */
 
-import { supabase, serviceClient, IS_SUPABASE_CONFIGURED } from "@/lib/supabase";
-import { getSessionContext, getCurrentUserId, resolveOrganizationId } from "@/lib/auth-bridge";
+import { supabase, IS_SUPABASE_CONFIGURED, IS_JWT_READY } from "@/lib/supabase";
+import { getSessionContext, getCurrentUserId, getCurrentOrganizationId } from "@/lib/auth-bridge";
 import { getStoredUser } from "@/contexts/auth-context";
 import { projects as MOCK_PROJECTS, employees as MOCK_EMPLOYEES } from "@/lib/dummy-data";
 import type {
@@ -31,60 +32,32 @@ import type {
 } from "@/types/project-view";
 import { ok, mockOk, fail, type ServiceResult } from "./_base.service";
 
-// ─── Active DB client helper ──────────────────────────────────────────────────
+// ─── Routing gate ─────────────────────────────────────────────────────────────
 
 /**
- * Returns the best available Supabase client:
- *   serviceClient  (bypasses RLS, Phase 4 dev) if configured
- *   supabase       (anon key, needs JWT for RLS) as fallback
- *   null           if Supabase is not configured at all
- */
-function db() {
-  return serviceClient ?? supabase;
-}
-
-/**
- * Check whether we should use Supabase or mock for a given request.
- * Returns the org_id when Supabase path is appropriate.
+ * Returns true only when it is safe and appropriate to query Supabase directly.
  *
- * Returns: { useSupabase: false } → use mock
- *          { useSupabase: true, orgId: string, client: SupabaseClient } → use Supabase
- *          { useSupabase: true, orgId: null, error: string } → surface org error to UI
+ * Phase 4.1: always returns false because IS_JWT_READY = false.
+ *   Without a valid JWT, auth.uid() is null in RLS → queries are blocked.
+ *   The anon key alone must never be used for protected data without auth context.
+ *
+ * Phase 5: returns true once IS_JWT_READY is flipped after Clerk JWT wiring.
  */
-type SupabaseRouting =
-  | { useSupabase: false }
-  | { useSupabase: true; orgId: string; client: NonNullable<ReturnType<typeof db>> }
-  | { useSupabase: true; orgId: null; error: string };
-
-async function routeToSupabase(): Promise<SupabaseRouting> {
+function shouldUseSupabase(): boolean {
   const { isDemo } = getSessionContext();
-
-  // Demo sessions always use mock — never touch the database
-  if (isDemo) return { useSupabase: false };
-
-  // Supabase not configured — use mock
-  if (!IS_SUPABASE_CONFIGURED) return { useSupabase: false };
-
-  const client = db();
-
-  // Supabase is configured but no client (shouldn't happen, but guard anyway)
-  if (!client) return { useSupabase: false };
-
-  // Resolve organisation ID (sync fast-path, then async Supabase lookup)
-  const orgId = await resolveOrganizationId();
-
-  if (!orgId) {
-    // Supabase IS configured, user is NOT demo, but we can't find org_id.
-    // This is an explicit error — never silently fall back to mock.
-    const msg = IS_SUPABASE_CONFIGURED
-      ? "Organization not configured. " +
-        "Set VITE_SUPABASE_ORG_ID in your .env file or ensure your profile " +
-        "exists in the Supabase database (run seed.sql)."
-      : "Supabase is not configured.";
-    return { useSupabase: true, orgId: null, error: msg };
+  if (isDemo) return false;
+  if (!IS_SUPABASE_CONFIGURED) return false;
+  if (!IS_JWT_READY) {
+    if (import.meta.env.DEV) {
+      console.info(
+        "[ElectraFlow] Project service: Supabase configured but JWT auth not wired (Phase 4.1). " +
+          "Using mock/sessionStorage data safely. " +
+          "Phase 5 wires Clerk JWT → IS_JWT_READY = true → real DB ops.",
+      );
+    }
+    return false;
   }
-
-  return { useSupabase: true, orgId, client };
+  return true;
 }
 
 // ─── Session-storage overlay (mock mutations) ─────────────────────────────────
@@ -175,7 +148,7 @@ function toProjectView(raw: RawProject): ProjectView {
   };
 }
 
-/** Convert a Supabase row (with optional joined clients/pm objects) to ProjectView. */
+/** Convert a Supabase row (with optional joined clients/pm) to ProjectView. */
 function rowToProjectView(row: Record<string, unknown>): ProjectView {
   return {
     ...(row as unknown as ProjectView),
@@ -212,7 +185,7 @@ function applyMockRoleFilter(projects: ProjectView[]): ProjectView[] {
   return projects;
 }
 
-// ─── Compose mock project list (base dummy-data + sessionStorage overlay) ────
+// ─── Compose mock project list (base + sessionStorage overlay) ────────────────
 
 function getMockProjectList(): ProjectView[] {
   const overlay = getOverlay();
@@ -230,20 +203,20 @@ function getMockProjectList(): ProjectView[] {
 // ─── Service: list ─────────────────────────────────────────────────────────────
 
 export async function listProjects(): Promise<ServiceResult<ProjectView[]>> {
-  const routing = await routeToSupabase();
-
-  if (!routing.useSupabase) {
+  // Phase 4.1: shouldUseSupabase() always returns false.
+  if (!shouldUseSupabase()) {
     return mockOk(applyMockRoleFilter(getMockProjectList()));
   }
 
-  if (routing.orgId === null) {
-    return fail<ProjectView[]>(routing.error);
+  // ── Phase 5+ Supabase path ─────────────────────────────────────────────────
+  // Reached only when IS_JWT_READY = true and Clerk JWT is set on supabase client.
+  const orgId = getCurrentOrganizationId();
+  if (!orgId) {
+    return fail<ProjectView[]>("Organisation ID not resolved from JWT. Check Phase 5 auth setup.");
   }
 
-  const { orgId, client } = routing;
-
   try {
-    const { data, error } = await client
+    const { data, error } = await supabase!
       .from("projects")
       .select("*, clients:client_id(name), pm:pm_id(full_name)")
       .eq("organization_id", orgId)
@@ -260,22 +233,15 @@ export async function listProjects(): Promise<ServiceResult<ProjectView[]>> {
 // ─── Service: get single ──────────────────────────────────────────────────────
 
 export async function getProject(id: string): Promise<ServiceResult<ProjectView>> {
-  const routing = await routeToSupabase();
-
-  if (!routing.useSupabase) {
+  if (!shouldUseSupabase()) {
     const project = getMockProjectList().find((p) => p.id === id);
     if (!project) return fail<ProjectView>(`Project "${id}" not found.`);
     return mockOk(project);
   }
 
-  if (routing.orgId === null) {
-    return fail<ProjectView>(routing.error);
-  }
-
-  const { client } = routing;
-
+  // ── Phase 5+ Supabase path ─────────────────────────────────────────────────
   try {
-    const { data, error } = await client
+    const { data, error } = await supabase!
       .from("projects")
       .select("*, clients:client_id(name), pm:pm_id(full_name)")
       .eq("id", id)
@@ -295,10 +261,8 @@ export async function getProject(id: string): Promise<ServiceResult<ProjectView>
 export async function createProject(
   input: ProjectCreateInput,
 ): Promise<ServiceResult<ProjectView>> {
-  const routing = await routeToSupabase();
-
-  if (!routing.useSupabase) {
-    // Mock / sessionStorage path
+  if (!shouldUseSupabase()) {
+    // Mock / sessionStorage path — changes visible in this tab until refresh
     const now = new Date().toISOString();
     const newProject: ProjectView = {
       id: `mock-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -331,15 +295,13 @@ export async function createProject(
     return mockOk(newProject);
   }
 
-  if (routing.orgId === null) {
-    return fail<ProjectView>(routing.error);
-  }
-
-  const { orgId, client } = routing;
+  // ── Phase 5+ Supabase path ─────────────────────────────────────────────────
+  const orgId = getCurrentOrganizationId();
+  if (!orgId) return fail<ProjectView>("Organisation ID not resolved from JWT.");
   const userId = getCurrentUserId();
 
   try {
-    const { data, error } = await client
+    const { data, error } = await supabase!
       .from("projects")
       .insert({
         organization_id: orgId,
@@ -361,10 +323,6 @@ export async function createProject(
       .single();
 
     if (error) return fail<ProjectView>(error);
-
-    // Note: client_name and pm_name are denormalized view fields.
-    // They are passed from the form as human-readable strings.
-    // In Phase 5, these will be resolved via client_id/pm_id JOINs.
     return ok({
       ...(data as ProjectView),
       client_name: input.client_name ?? null,
@@ -381,9 +339,7 @@ export async function updateProject(
   id: string,
   input: ProjectUpdateInput,
 ): Promise<ServiceResult<ProjectView>> {
-  const routing = await routeToSupabase();
-
-  if (!routing.useSupabase) {
+  if (!shouldUseSupabase()) {
     const overlay = getOverlay();
     overlay.updated[id] = { ...(overlay.updated[id] ?? {}), ...input };
     saveOverlay(overlay);
@@ -392,14 +348,9 @@ export async function updateProject(
     return mockOk(updated);
   }
 
-  if (routing.orgId === null) {
-    return fail<ProjectView>(routing.error);
-  }
-
-  const { client } = routing;
+  // ── Phase 5+ Supabase path ─────────────────────────────────────────────────
   const userId = getCurrentUserId();
 
-  // Build only the fields that were supplied (undefined = unchanged)
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
     ...(userId && { updated_by: userId }),
@@ -418,7 +369,7 @@ export async function updateProject(
   if (input.budget !== undefined) patch.budget = input.budget;
 
   try {
-    const { data, error } = await client
+    const { data, error } = await supabase!
       .from("projects")
       .update(patch)
       .eq("id", id)
@@ -431,7 +382,6 @@ export async function updateProject(
 
     return ok({
       ...(data as ProjectView),
-      // Preserve denormalized display names from the input (Phase 4)
       client_name: input.client_name ?? (data as ProjectView).client_name ?? null,
       pm_name: input.pm_name ?? (data as ProjectView).pm_name ?? null,
     });
@@ -443,24 +393,18 @@ export async function updateProject(
 // ─── Service: archive (soft-delete) ──────────────────────────────────────────
 
 export async function archiveProject(id: string): Promise<ServiceResult<boolean>> {
-  const routing = await routeToSupabase();
-
-  if (!routing.useSupabase) {
+  if (!shouldUseSupabase()) {
     const overlay = getOverlay();
     if (!overlay.archived.includes(id)) overlay.archived.push(id);
     saveOverlay(overlay);
     return mockOk(true);
   }
 
-  if (routing.orgId === null) {
-    return fail<boolean>(routing.error);
-  }
-
-  const { client } = routing;
+  // ── Phase 5+ Supabase path ─────────────────────────────────────────────────
   const userId = getCurrentUserId();
 
   try {
-    const { error } = await client
+    const { error } = await supabase!
       .from("projects")
       .update({
         deleted_at: new Date().toISOString(),
@@ -482,9 +426,7 @@ export async function archiveProject(id: string): Promise<ServiceResult<boolean>
 export async function listProjectMembers(
   projectId: string,
 ): Promise<ServiceResult<ProjectMemberView[]>> {
-  const routing = await routeToSupabase();
-
-  if (!routing.useSupabase) {
+  if (!shouldUseSupabase()) {
     const raw = MOCK_PROJECTS.find((p) => p.id === projectId);
     const engineerNames: string[] = raw?.engineers ?? [];
     const members: ProjectMemberView[] = MOCK_EMPLOYEES.filter((e) =>
@@ -509,12 +451,9 @@ export async function listProjectMembers(
     return mockOk(members);
   }
 
-  if (routing.orgId === null) return fail<ProjectMemberView[]>(routing.error);
-
-  const { client } = routing;
-
+  // ── Phase 5+ Supabase path ─────────────────────────────────────────────────
   try {
-    const { data, error } = await client
+    const { data, error } = await supabase!
       .from("project_members")
       .select("id, profile_id, role, profiles:profile_id(full_name)")
       .eq("project_id", projectId)
@@ -548,9 +487,7 @@ const MILESTONE_TEMPLATES: Omit<ProjectMilestoneView, "id">[] = [
 export async function listProjectMilestones(
   projectId: string,
 ): Promise<ServiceResult<ProjectMilestoneView[]>> {
-  const routing = await routeToSupabase();
-
-  if (!routing.useSupabase) {
+  if (!shouldUseSupabase()) {
     const raw = MOCK_PROJECTS.find((p) => p.id === projectId);
     const progress = raw?.progress ?? 0;
     const doneCount = Math.floor((progress / 100) * MILESTONE_TEMPLATES.length);
@@ -564,12 +501,9 @@ export async function listProjectMilestones(
     return mockOk(milestones);
   }
 
-  if (routing.orgId === null) return fail<ProjectMilestoneView[]>(routing.error);
-
-  const { client } = routing;
-
+  // ── Phase 5+ Supabase path ─────────────────────────────────────────────────
   try {
-    const { data, error } = await client
+    const { data, error } = await supabase!
       .from("project_milestones")
       .select("*")
       .eq("project_id", projectId)

@@ -52,7 +52,7 @@ import {
 import { ProjectFormModal } from "@/components/projects/ProjectFormModal";
 import { useProjects, useArchiveProject } from "@/hooks/api/useProjects";
 import { useAuth } from "@/contexts/auth-context";
-import { IS_SUPABASE_CONFIGURED } from "@/lib/supabase";
+import { IS_SUPABASE_CONFIGURED, IS_JWT_READY } from "@/lib/supabase";
 import { formatMoney, formatDate } from "@/lib/format";
 import type { ProjectView } from "@/types/project-view";
 import { toast } from "sonner";
@@ -122,8 +122,8 @@ function ProjectsPage() {
 
   // ── Role capabilities ──
   const canWrite = role === "Admin" || role === "Project Manager";
+  // Demo users see all projects (not role-filtered) regardless of Supabase config
   const showDemoBanner =
-    !IS_SUPABASE_CONFIGURED &&
     isDemo &&
     (role === "Project Manager" ||
       role === "Senior Electrical Engineer" ||
@@ -219,11 +219,13 @@ function ProjectsPage() {
         }
       />
 
-      {/* Demo mode — changes are temporary */}
-      {!IS_SUPABASE_CONFIGURED && (
+      {/* Data-source banner: shows context-appropriate message */}
+      {(!IS_SUPABASE_CONFIGURED || !IS_JWT_READY) && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
           <Info className="h-4 w-4 shrink-0" />
-          Demo mode — changes are temporary and disappear after refresh.
+          {IS_SUPABASE_CONFIGURED && !IS_JWT_READY
+            ? "Supabase is configured, but authenticated database access is not connected yet (Phase 5). Using mock data."
+            : "Demo mode — changes are temporary and disappear after refresh."}
         </div>
       )}
 

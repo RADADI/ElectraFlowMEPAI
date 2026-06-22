@@ -1,26 +1,29 @@
 /**
- * Supabase clients — Phase 4
+ * Supabase client — Phase 4.1 (security cleanup)
  *
- * Two clients are exported:
+ * Only the anon key is used client-side.  The service role key MUST NEVER
+ * appear as a VITE_ variable — it would be embedded in the browser bundle,
+ * bypass Row Level Security, and expose every row in every table to any user
+ * who opens DevTools.
  *
- *   supabase      — anon key, respects RLS.  For reads once JWT auth is wired.
- *   serviceClient — service role key, bypasses RLS.
- *                   DEV ONLY until Clerk JWT integration (Phase 5).
- *                   Set VITE_SUPABASE_SERVICE_ROLE_KEY in .env.local (never commit it).
+ * Current state (Phase 4.1):
+ *   IS_JWT_READY = false
+ *   → Project service uses mock/sessionStorage data for all operations.
+ *   → Supabase client is initialised (so schema/RLS can be tested in SQL
+ *     editor) but is NOT queried for protected project data.
  *
- * Guard rules in services:
- *   • Always check IS_SUPABASE_CONFIGURED before any query.
- *   • For Phase 4 write/read ops, prefer serviceClient when available.
- *   • Demo sessions must use mock data regardless of Supabase config.
+ * Phase 5 migration path:
+ *   1. Wire Clerk JWT into the Supabase client:
+ *        supabase.auth.setSession({ access_token: clerkToken, refresh_token: "" })
+ *   2. Set IS_JWT_READY = true (or derive it from clerk.isSignedIn dynamically).
+ *   3. The project service will automatically start using real Supabase queries.
+ *   4. RLS policies resolve via auth.uid() → the anon key is now safe for CRUD.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY as
-  | string
-  | undefined;
 
 // ─── Flags ────────────────────────────────────────────────────────────────────
 
@@ -35,42 +38,32 @@ export const IS_SUPABASE_CONFIGURED: boolean =
   SUPABASE_ANON_KEY.trim().length > 0;
 
 /**
- * True when VITE_SUPABASE_SERVICE_ROLE_KEY is also set.
- * This key bypasses RLS — required for Phase 4 CRUD before JWT is wired (Phase 5).
+ * Phase 4.1: always false — Clerk JWT ↔ Supabase auth is not wired yet.
  *
- * ⚠️  NEVER ship the service role key to production. Set it only in .env.local.
+ * Until this is true, the project service routes ALL data through the
+ * mock/sessionStorage layer, regardless of IS_SUPABASE_CONFIGURED.
+ * This prevents the anon key from being used without auth.uid() set,
+ * which would cause RLS to block queries silently.
+ *
+ * Phase 5 action: set this to true AFTER wiring Clerk JWT into Supabase auth.
+ * The moment it is true the service layer automatically switches to real DB ops.
  */
-export const HAS_SERVICE_KEY: boolean =
-  IS_SUPABASE_CONFIGURED &&
-  typeof SUPABASE_SERVICE_ROLE_KEY === "string" &&
-  SUPABASE_SERVICE_ROLE_KEY.trim().length > 0;
+export const IS_JWT_READY: boolean = false;
 
-// ─── Clients ──────────────────────────────────────────────────────────────────
+// ─── Anon client (the ONLY client shipped to the browser) ────────────────────
 
 /**
- * Anon client — respects Row Level Security.
- * Safe for production reads once Clerk JWT is set as the Bearer token.
+ * Supabase anon client.  Safe to use in the browser.
+ *
+ * In Phase 4.1 this client is only used for:
+ *   • Verifying connectivity (dev diagnostics below)
+ *   • Future Phase 5 queries once auth.uid() is set via Clerk JWT
+ *
+ * It is NOT used for project CRUD until IS_JWT_READY = true.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const supabase: SupabaseClient<any> | null = IS_SUPABASE_CONFIGURED
   ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!)
-  : null;
-
-/**
- * Service role client — bypasses Row Level Security.
- *
- * DEV ONLY. Used in Phase 4 so CRUD works before Clerk JWT integration.
- * Phase 5 will remove this and wire the Clerk token into the anon client via
- *   supabase.auth.setSession({ access_token: clerkToken, refresh_token: "" })
- * after which all RLS policies resolve correctly.
- *
- * Set VITE_SUPABASE_SERVICE_ROLE_KEY in .env.local (never .env, never commit).
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const serviceClient: SupabaseClient<any> | null = HAS_SERVICE_KEY
-  ? createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!.trim(), {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
   : null;
 
 // ─── Dev diagnostics ─────────────────────────────────────────────────────────
@@ -78,19 +71,16 @@ export const serviceClient: SupabaseClient<any> | null = HAS_SERVICE_KEY
 if (import.meta.env.DEV) {
   if (!IS_SUPABASE_CONFIGURED) {
     console.info(
-      "[ElectraFlow] Supabase: not configured — app will use mock/demo data.",
-      "Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY in .env to enable.",
+      "[ElectraFlow] Supabase: not configured — all data uses mock/demo mode.",
+      "Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY in .env to configure.",
     );
-  } else if (!HAS_SERVICE_KEY) {
-    console.warn(
-      "[ElectraFlow] Supabase: anon client only (no service key). " +
-        "CRUD operations will fail unless Clerk JWT is wired. " +
-        "Set VITE_SUPABASE_SERVICE_ROLE_KEY in .env.local for Phase 4 dev testing.",
-    );
-  } else {
+  } else if (!IS_JWT_READY) {
     console.info(
-      "[ElectraFlow] Supabase: configured with service key ✓ (Phase 4 dev mode).",
+      "[ElectraFlow] Supabase: configured ✓ but JWT auth not wired (Phase 4.1).",
+      "Project data uses mock/sessionStorage. Phase 5 wires Clerk JWT → real DB.",
       SUPABASE_URL,
     );
+  } else {
+    console.info("[ElectraFlow] Supabase: configured + JWT ready ✓", SUPABASE_URL);
   }
 }

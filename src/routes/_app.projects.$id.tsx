@@ -38,7 +38,7 @@ import { useProject, useProjectMembers, useProjectMilestones } from "@/hooks/api
 import { useDocuments } from "@/hooks/api/useDocuments";
 import { useSubmittals } from "@/hooks/api/useSubmittals";
 import { useAuth } from "@/contexts/auth-context";
-import { IS_SUPABASE_CONFIGURED } from "@/lib/supabase";
+import { IS_SUPABASE_CONFIGURED, IS_JWT_READY } from "@/lib/supabase";
 import { formatMoney, formatDate } from "@/lib/format";
 import type { DocumentStatus, SubmittalStatus } from "@/types/database";
 
@@ -212,11 +212,13 @@ function ProjectDetailPage() {
         }
       />
 
-      {/* Demo mode banner */}
-      {!IS_SUPABASE_CONFIGURED && isDemo && (
+      {/* Data-source banner */}
+      {(!IS_SUPABASE_CONFIGURED || !IS_JWT_READY) && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
           <Info className="h-4 w-4 shrink-0" />
-          Demo mode — changes are temporary and disappear after refresh.
+          {IS_SUPABASE_CONFIGURED && !IS_JWT_READY
+            ? "Supabase is configured, but authenticated database access is not connected yet (Phase 5). Using mock data."
+            : "Demo mode — changes are temporary and disappear after refresh."}
         </div>
       )}
 
