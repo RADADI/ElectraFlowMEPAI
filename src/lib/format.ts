@@ -13,3 +13,18 @@ export const formatDate = (d: string | null | undefined): string => {
   if (!d) return "—";
   return d;
 };
+
+export const formatDateTime = (d: string | null | undefined): string => {
+  if (!d) return "—";
+  try {
+    return new Date(d).toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return d;
+  }
+};

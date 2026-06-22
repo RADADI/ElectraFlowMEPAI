@@ -44,7 +44,8 @@ export type SubmittalStatus =
   | "approved"
   | "approved_as_noted"
   | "revise_and_resubmit"
-  | "rejected";
+  | "rejected"
+  | "archived";
 
 export type ReviewAction =
   | "approved"
@@ -309,9 +310,15 @@ export interface Submittal {
   discipline: string | null;
   spec_section: string | null;
   status: SubmittalStatus;
+  /** Phase 7: revision counter — incremented on every revise-and-resubmit. */
+  revision_number: number;
   submitted_date: string | null;
   required_date: string | null;
+  /** Phase 7: date the review must be returned to the submitter. */
+  review_due_date: string | null;
   returned_date: string | null;
+  /** Phase 7: timestamp when the submittal reached approved / approved_as_noted. */
+  approved_at: string | null;
   submitted_by: string | null;
   reviewer_id: string | null;
   description: string | null;
@@ -329,16 +336,44 @@ export interface SubmittalItem {
   id: string;
   organization_id: string;
   submittal_id: string;
+  /** Legacy field kept for backward compat. New code uses equipment_name. */
   description: string;
+  /** Phase 7: specification section number (e.g. "26 05 19"). */
+  spec_section: string | null;
+  /** Phase 7: human-readable equipment / product name. */
+  equipment_name: string | null;
   quantity: number | null;
   unit: string | null;
   manufacturer: string | null;
   model_number: string | null;
   notes: string | null;
+  /** Phase 7: per-item status tracking. */
+  status: SubmittalStatus;
+  /** Phase 7: per-item revision counter. */
+  revision_number: number;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
   deleted_at: string | null;
 }
+
+export type SubmittalItemInsert = Omit<SubmittalItem, "id" | "created_at" | "updated_at">;
+export type SubmittalItemUpdate = Partial<SubmittalItemInsert>;
+
+/** Phase 7: links a submittal item to an existing project document (no file duplication). */
+export interface SubmittalItemDocument {
+  id: string;
+  organization_id: string;
+  submittal_id: string;
+  submittal_item_id: string;
+  document_id: string;
+  attached_by: string | null;
+  created_at: string;
+  deleted_at: string | null;
+}
+
+export type SubmittalItemDocumentInsert = Omit<SubmittalItemDocument, "id" | "created_at">;
 
 export interface SubmittalReview {
   id: string;
@@ -617,8 +652,13 @@ export interface Database {
       };
       submittal_items: {
         Row: SubmittalItem;
-        Insert: Omit<SubmittalItem, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<SubmittalItem, "id" | "created_at">>;
+        Insert: SubmittalItemInsert;
+        Update: SubmittalItemUpdate;
+      };
+      submittal_item_documents: {
+        Row: SubmittalItemDocument;
+        Insert: SubmittalItemDocumentInsert;
+        Update: Partial<SubmittalItemDocumentInsert>;
       };
       submittal_reviews: {
         Row: SubmittalReview;

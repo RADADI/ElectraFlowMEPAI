@@ -34,6 +34,7 @@ import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppClientPortalRouteImport } from './routes/_app.client-portal'
 import { Route as AppAppsRouteImport } from './routes/_app.apps'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
+import { Route as AppSubmittalsIdRouteImport } from './routes/_app.submittals.$id'
 import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
 import { Route as AppDocumentsIdRouteImport } from './routes/_app.documents.$id'
 
@@ -161,6 +162,11 @@ const AppAiRoute = AppAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSubmittalsIdRoute = AppSubmittalsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppSubmittalsRoute,
+} as any)
 const AppProjectsIdRoute = AppProjectsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -193,12 +199,13 @@ export interface FileRoutesByFullPath {
   '/resources': typeof AppResourcesRoute
   '/rfi': typeof AppRfiRoute
   '/settings': typeof AppSettingsRoute
-  '/submittals': typeof AppSubmittalsRoute
+  '/submittals': typeof AppSubmittalsRouteWithChildren
   '/users': typeof AppUsersRoute
   '/workload': typeof AppWorkloadRoute
   '/invite/$token': typeof InviteTokenRoute
   '/documents/$id': typeof AppDocumentsIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
+  '/submittals/$id': typeof AppSubmittalsIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -220,13 +227,14 @@ export interface FileRoutesByTo {
   '/resources': typeof AppResourcesRoute
   '/rfi': typeof AppRfiRoute
   '/settings': typeof AppSettingsRoute
-  '/submittals': typeof AppSubmittalsRoute
+  '/submittals': typeof AppSubmittalsRouteWithChildren
   '/users': typeof AppUsersRoute
   '/workload': typeof AppWorkloadRoute
   '/invite/$token': typeof InviteTokenRoute
   '/': typeof AppIndexRoute
   '/documents/$id': typeof AppDocumentsIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
+  '/submittals/$id': typeof AppSubmittalsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -250,13 +258,14 @@ export interface FileRoutesById {
   '/_app/resources': typeof AppResourcesRoute
   '/_app/rfi': typeof AppRfiRoute
   '/_app/settings': typeof AppSettingsRoute
-  '/_app/submittals': typeof AppSubmittalsRoute
+  '/_app/submittals': typeof AppSubmittalsRouteWithChildren
   '/_app/users': typeof AppUsersRoute
   '/_app/workload': typeof AppWorkloadRoute
   '/invite/$token': typeof InviteTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/documents/$id': typeof AppDocumentsIdRoute
   '/_app/projects/$id': typeof AppProjectsIdRoute
+  '/_app/submittals/$id': typeof AppSubmittalsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -287,6 +296,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/documents/$id'
     | '/projects/$id'
+    | '/submittals/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -315,6 +325,7 @@ export interface FileRouteTypes {
     | '/'
     | '/documents/$id'
     | '/projects/$id'
+    | '/submittals/$id'
   id:
     | '__root__'
     | '/_app'
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/documents/$id'
     | '/_app/projects/$id'
+    | '/_app/submittals/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -532,6 +544,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/submittals/$id': {
+      id: '/_app/submittals/$id'
+      path: '/$id'
+      fullPath: '/submittals/$id'
+      preLoaderRoute: typeof AppSubmittalsIdRouteImport
+      parentRoute: typeof AppSubmittalsRoute
+    }
     '/_app/projects/$id': {
       id: '/_app/projects/$id'
       path: '/$id'
@@ -573,6 +592,18 @@ const AppProjectsRouteWithChildren = AppProjectsRoute._addFileChildren(
   AppProjectsRouteChildren,
 )
 
+interface AppSubmittalsRouteChildren {
+  AppSubmittalsIdRoute: typeof AppSubmittalsIdRoute
+}
+
+const AppSubmittalsRouteChildren: AppSubmittalsRouteChildren = {
+  AppSubmittalsIdRoute: AppSubmittalsIdRoute,
+}
+
+const AppSubmittalsRouteWithChildren = AppSubmittalsRoute._addFileChildren(
+  AppSubmittalsRouteChildren,
+)
+
 interface AppRouteChildren {
   AppAiRoute: typeof AppAiRoute
   AppAppsRoute: typeof AppAppsRoute
@@ -589,7 +620,7 @@ interface AppRouteChildren {
   AppResourcesRoute: typeof AppResourcesRoute
   AppRfiRoute: typeof AppRfiRoute
   AppSettingsRoute: typeof AppSettingsRoute
-  AppSubmittalsRoute: typeof AppSubmittalsRoute
+  AppSubmittalsRoute: typeof AppSubmittalsRouteWithChildren
   AppUsersRoute: typeof AppUsersRoute
   AppWorkloadRoute: typeof AppWorkloadRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -611,7 +642,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppResourcesRoute: AppResourcesRoute,
   AppRfiRoute: AppRfiRoute,
   AppSettingsRoute: AppSettingsRoute,
-  AppSubmittalsRoute: AppSubmittalsRoute,
+  AppSubmittalsRoute: AppSubmittalsRouteWithChildren,
   AppUsersRoute: AppUsersRoute,
   AppWorkloadRoute: AppWorkloadRoute,
   AppIndexRoute: AppIndexRoute,

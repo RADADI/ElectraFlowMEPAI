@@ -75,6 +75,7 @@ const SUB_STATUS_CLASS: Record<SubmittalStatus, string> = {
   approved_as_noted: "bg-success/15 text-success border-success/30",
   rejected: "bg-destructive/15 text-destructive border-destructive/30",
   revise_and_resubmit: "bg-warning/15 text-warning border-warning/30",
+  archived: "bg-muted text-muted-foreground border-border",
 };
 
 const SUB_STATUS_LABEL: Record<SubmittalStatus, string> = {
@@ -85,6 +86,7 @@ const SUB_STATUS_LABEL: Record<SubmittalStatus, string> = {
   approved_as_noted: "Approved as Noted",
   rejected: "Rejected",
   revise_and_resubmit: "Revise & Resubmit",
+  archived: "Archived",
 };
 
 const MEMBER_STATUS_CLASS: Record<string, string> = {
@@ -172,7 +174,10 @@ function ProjectDetailPage() {
   const { data: docs = [], isLoading: docsLoading } = useDocuments(
     project ? { projectId: id } : {},
   );
-  const { data: subs = [], isLoading: subsLoading } = useSubmittals(project ? id : undefined);
+  const { data: subsResult, isLoading: subsLoading } = useSubmittals(
+    project ? { projectId: id } : undefined,
+  );
+  const subs = subsResult?.data ?? [];
 
   const [editOpen, setEditOpen] = useState(false);
 
