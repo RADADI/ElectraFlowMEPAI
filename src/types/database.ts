@@ -552,6 +552,9 @@ export interface UploadSession {
 
 // ─── Employees / Resources ────────────────────────────────────────────────────
 
+export type AllocationStatus = "pending" | "active" | "on_hold" | "ended";
+export type EmploymentStatus = "active" | "on_leave" | "terminated" | "contractor";
+
 export interface Employee {
   id: string;
   organization_id: string;
@@ -561,10 +564,24 @@ export interface Employee {
   email: string;
   role: UserRole;
   department: string | null;
+  /** Phase 10: engineering discipline (e.g. Electrical, HVAC, Civil). */
+  discipline: string | null;
   title: string | null;
   phone: string | null;
   hire_date: string | null;
   employment_type: "full_time" | "part_time" | "contractor" | "consultant";
+  /** Phase 10: lifecycle status — active | on_leave | terminated | contractor. */
+  employment_status: EmploymentStatus;
+  /** Phase 10: standard weekly working hours for capacity calculations. */
+  default_weekly_capacity_hours: number;
+  /** Phase 10: target billable utilization as a percentage (0–100). */
+  billable_target_percent: number | null;
+  /** Phase 10: office/site location. */
+  location: string | null;
+  /** Phase 10: direct manager employee id. */
+  manager_id: string | null;
+  start_date: string | null;
+  end_date: string | null;
   is_active: boolean;
   hourly_rate: number | null;
   created_at: string;
@@ -582,12 +599,38 @@ export interface EmployeeSkill {
   organization_id: string;
   employee_id: string;
   skill_name: string;
+  /** Phase 10: grouping label e.g. Software, Standards, Leadership. */
+  skill_category: string | null;
   proficiency_level: "beginner" | "intermediate" | "advanced" | "expert";
   years_experience: number | null;
   certified: boolean;
+  last_used_date: string | null;
+  notes: string | null;
   created_at: string;
   deleted_at: string | null;
 }
+
+/** Phase 10: professional certifications held by an employee. */
+export interface EmployeeCertification {
+  id: string;
+  organization_id: string;
+  employee_id: string;
+  certification_name: string;
+  issuing_body: string | null;
+  certification_number: string | null;
+  issue_date: string | null;
+  expiry_date: string | null;
+  attachment_url: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  deleted_at: string | null;
+}
+
+export type EmployeeCertificationInsert = Omit<
+  EmployeeCertification,
+  "id" | "created_at" | "updated_at"
+>;
 
 export interface ResourceAllocation {
   id: string;
@@ -596,8 +639,12 @@ export interface ResourceAllocation {
   project_id: string;
   role_on_project: string | null;
   allocation_percent: number;
+  /** Phase 10: explicit weekly hours override (otherwise derived from allocation_percent × capacity). */
+  weekly_hours: number | null;
   start_date: string;
   end_date: string | null;
+  /** Phase 10: lifecycle status. */
+  status: AllocationStatus;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -739,6 +786,11 @@ export interface Database {
         Row: EmployeeSkill;
         Insert: Omit<EmployeeSkill, "id" | "created_at">;
         Update: Partial<Omit<EmployeeSkill, "id" | "created_at">>;
+      };
+      employee_certifications: {
+        Row: EmployeeCertification;
+        Insert: EmployeeCertificationInsert;
+        Update: Partial<EmployeeCertificationInsert>;
       };
       resource_allocations: {
         Row: ResourceAllocation;
