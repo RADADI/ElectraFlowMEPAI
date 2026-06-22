@@ -15,8 +15,27 @@ import { Zap, Loader2, Eye, EyeOff } from "lucide-react";
 import { ROLES } from "@/lib/dummy-data";
 import type { AppRole } from "@/lib/permissions";
 import { getDefaultRoute } from "@/lib/permissions";
-import { setStoredRole } from "@/contexts/auth-context";
+import { setMockSession, setStoredRole, notifyAuthChange } from "@/contexts/auth-context";
+import type { StoredUser } from "@/contexts/auth-context";
 import { toast } from "sonner";
+
+/**
+ * Creates a demo StoredUser for a selected role so every mock login always
+ * overwrites mep-user with fresh data — preventing stale names from a
+ * previous session showing up in the topbar.
+ */
+function makeDemoUser(role: AppRole): StoredUser {
+  // "QA/QC Engineer" → "qa.qc.engineer"
+  const slug = role
+    .toLowerCase()
+    .replace(/[\s/]+/g, ".")
+    .replace(/[^a-z.]/g, "");
+  return {
+    fullName: `${role} Demo`,
+    email: `${slug}@electraflow.ai`,
+    company: "ElectraFlow Demo",
+  };
+}
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — ElectraFlow AI" }] }),
@@ -167,8 +186,10 @@ function ClerkLoginForm() {
           );
           return;
         }
+        // Set role and notify providers so topbar updates immediately.
         setStoredRole(role);
-        toast.success(`Welcome back!`);
+        notifyAuthChange();
+        toast.success("Welcome back!");
         navigate({ to: getDefaultRoute(role), replace: true });
       } else {
         toast.error("Sign-in incomplete. Additional verification may be required.");
@@ -209,10 +230,12 @@ function MockLoginForm() {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    // Simulate brief loading for UX feedback
+    // Brief delay for UX feedback
     setTimeout(() => {
-      setStoredRole(role);
-      toast.success(`Welcome back!`);
+      // Always overwrite mep-user so the topbar shows the freshly selected role,
+      // not whatever name was stored from a previous session.
+      setMockSession(makeDemoUser(role), role);
+      toast.success("Welcome back!");
       navigate({ to: getDefaultRoute(role), replace: true });
       setLoading(false);
     }, 400);

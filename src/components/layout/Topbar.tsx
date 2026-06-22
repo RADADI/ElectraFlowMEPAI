@@ -22,7 +22,7 @@ import { useAuth } from "@/contexts/auth-context";
 export function Topbar() {
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
-  const { displayName, email, imageUrl, initials, role, signOut } = useAuth();
+  const { displayName, email, company, imageUrl, initials, role, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -58,7 +58,11 @@ export function Topbar() {
         />
       </div>
 
-      <div className="hidden md:block text-sm text-muted-foreground">Acme Engineering Co.</div>
+      {company && (
+        <div className="hidden md:block text-sm text-muted-foreground truncate max-w-[160px]">
+          {company}
+        </div>
+      )}
 
       {/* Role badge */}
       {role && (

@@ -14,7 +14,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { ROLES } from "@/lib/dummy-data";
 import type { AppRole } from "@/lib/permissions";
-import { setStoredRole, setStoredUser } from "@/contexts/auth-context";
+import { setMockSession } from "@/contexts/auth-context";
 import { AuthLeftPanel, MobileLogo, PasswordInput } from "@/routes/login";
 import { toast } from "sonner";
 
@@ -334,9 +334,11 @@ function ClerkSignupForm() {
         toast.info("Account created! Check your email to verify, then sign in.");
       }
 
-      // Store profile & role regardless (mock layer)
-      setStoredUser({ fullName: form.fullName, email: form.email, company: form.company });
-      setStoredRole(form.role);
+      // Atomically write profile + role so the topbar shows immediately.
+      setMockSession(
+        { fullName: form.fullName, email: form.email, company: form.company },
+        form.role,
+      );
       toast.success("Account created! Let's set up your workspace.");
       navigate({ to: "/onboarding", replace: true });
     } catch (err: unknown) {
@@ -378,8 +380,10 @@ function MockSignupForm() {
     setLoading(true);
     // Simulate brief network delay
     setTimeout(() => {
-      setStoredUser({ fullName: form.fullName, email: form.email, company: form.company });
-      setStoredRole(form.role);
+      setMockSession(
+        { fullName: form.fullName, email: form.email, company: form.company },
+        form.role,
+      );
       toast.success("Account created! Let's set up your workspace.");
       navigate({ to: "/onboarding", replace: true });
       setLoading(false);
