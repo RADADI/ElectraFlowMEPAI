@@ -11,41 +11,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Zap, Loader2, Eye, EyeOff } from "lucide-react";
+import { Zap, Loader2, Eye, EyeOff, AlertCircle, FlaskConical } from "lucide-react";
 import { ROLES } from "@/lib/dummy-data";
 import type { AppRole } from "@/lib/permissions";
 import { getDefaultRoute } from "@/lib/permissions";
-import { setMockSession, setStoredRole, notifyAuthChange } from "@/contexts/auth-context";
-import type { StoredUser } from "@/contexts/auth-context";
+import {
+  setActiveSession,
+  setMockSession,
+  notifyAuthChange,
+  setStoredRole,
+  validateLogin,
+  type StoredUser,
+} from "@/contexts/auth-context";
 import { toast } from "sonner";
-
-/**
- * Creates a demo StoredUser for a selected role so every mock login always
- * overwrites mep-user with fresh data — preventing stale names from a
- * previous session showing up in the topbar.
- */
-function makeDemoUser(role: AppRole): StoredUser {
-  // "QA/QC Engineer" → "qa.qc.engineer"
-  const slug = role
-    .toLowerCase()
-    .replace(/[\s/]+/g, ".")
-    .replace(/[^a-z.]/g, "");
-  return {
-    fullName: `${role} Demo`,
-    email: `${slug}@electraflow.ai`,
-    company: "ElectraFlow Demo",
-  };
-}
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — ElectraFlow AI" }] }),
   beforeLoad: () => {
-    // If already signed in, skip login and go directly to their landing page
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("mep-role") as AppRole | null;
-      if (role) {
-        throw redirect({ to: getDefaultRoute(role) });
-      }
+      if (role) throw redirect({ to: getDefaultRoute(role) });
     }
   },
   component: LoginPage,
@@ -53,7 +38,7 @@ export const Route = createFileRoute("/login")({
 
 const IS_CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-// ─── Shared left panel ────────────────────────────────────────────────────────
+// ─── Shared UI helpers ────────────────────────────────────────────────────────
 
 export function AuthLeftPanel() {
   return (
@@ -106,8 +91,6 @@ export function AuthLeftPanel() {
   );
 }
 
-// ─── Mobile logo ──────────────────────────────────────────────────────────────
-
 export function MobileLogo() {
   return (
     <div className="lg:hidden flex items-center gap-2 mb-4">
@@ -118,8 +101,6 @@ export function MobileLogo() {
     </div>
   );
 }
-
-// ─── Password input with show/hide ────────────────────────────────────────────
 
 export function PasswordInput({
   id,
@@ -158,191 +139,78 @@ export function PasswordInput({
   );
 }
 
-// ─── Clerk-aware form ─────────────────────────────────────────────────────────
-
-function ClerkLoginForm() {
-  const navigate = useNavigate();
-  const { signIn } = useSignIn();
-  const [role, setRole] = useState<AppRole>("Admin");
-  const [email, setEmail] = useState("demo@electraflow.ai");
-  const [pwd, setPwd] = useState("demo1234");
-  const [loading, setLoading] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!signIn) return;
-    setLoading(true);
-    try {
-      const { error: createError } = await signIn.create({ identifier: email, password: pwd });
-      if (createError) {
-        toast.error(createError.longMessage || createError.message || "Sign-in failed.");
-        return;
-      }
-      if (signIn.status === "complete") {
-        const { error: finalizeError } = await signIn.finalize();
-        if (finalizeError) {
-          toast.error(
-            finalizeError.longMessage || finalizeError.message || "Session could not be created.",
-          );
-          return;
-        }
-        // Set role and notify providers so topbar updates immediately.
-        setStoredRole(role);
-        notifyAuthChange();
-        toast.success("Welcome back!");
-        navigate({ to: getDefaultRoute(role), replace: true });
-      } else {
-        toast.error("Sign-in incomplete. Additional verification may be required.");
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Sign-in failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
+function FormError({ message }: { message: string }) {
   return (
-    <LoginLayout>
-      <form onSubmit={submit} className="w-full max-w-md space-y-5">
-        <LoginFormContent
-          email={email}
-          setEmail={setEmail}
-          pwd={pwd}
-          setPwd={setPwd}
-          role={role}
-          setRole={setRole}
-          loading={loading}
-        />
-      </form>
-    </LoginLayout>
+    <div className="rounded-md border border-destructive/40 bg-destructive/8 px-3 py-2.5 text-sm text-destructive flex items-start gap-2">
+      <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+      <span>{message}</span>
+    </div>
   );
 }
 
-// ─── Mock-only form ───────────────────────────────────────────────────────────
-
-function MockLoginForm() {
-  const navigate = useNavigate();
-  const [role, setRole] = useState<AppRole>("Admin");
-  const [email, setEmail] = useState("demo@electraflow.ai");
-  const [pwd, setPwd] = useState("demo1234");
-  const [loading, setLoading] = useState(false);
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    // Brief delay for UX feedback
-    setTimeout(() => {
-      // Always overwrite mep-user so the topbar shows the freshly selected role,
-      // not whatever name was stored from a previous session.
-      setMockSession(makeDemoUser(role), role);
-      toast.success("Welcome back!");
-      navigate({ to: getDefaultRoute(role), replace: true });
-      setLoading(false);
-    }, 400);
-  }
-
-  return (
-    <LoginLayout>
-      <form onSubmit={submit} className="w-full max-w-md space-y-5">
-        <LoginFormContent
-          email={email}
-          setEmail={setEmail}
-          pwd={pwd}
-          setPwd={setPwd}
-          role={role}
-          setRole={setRole}
-          loading={loading}
-        />
-      </form>
-    </LoginLayout>
-  );
-}
-
-// ─── Shared layout & form content ─────────────────────────────────────────────
+// ─── Shared layout ────────────────────────────────────────────────────────────
 
 function LoginLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen w-full grid lg:grid-cols-2 bg-background">
       <AuthLeftPanel />
-      <div className="flex items-center justify-center p-6 lg:p-12">{children}</div>
+      <div className="flex items-start justify-center p-6 lg:p-12 overflow-y-auto">
+        <div className="w-full max-w-md py-8 space-y-0">{children}</div>
+      </div>
     </div>
   );
 }
 
-interface LoginFormContentProps {
-  email: string;
-  setEmail: (v: string) => void;
-  pwd: string;
-  setPwd: (v: string) => void;
-  role: AppRole;
-  setRole: (v: AppRole) => void;
-  loading: boolean;
-}
+// ─── Demo login section ───────────────────────────────────────────────────────
+// Shown below the real login form in BOTH mock and Clerk modes.
+// Role selector lives ONLY here; the real login has no role picker.
 
-function LoginFormContent({
-  email,
-  setEmail,
-  pwd,
-  setPwd,
-  role,
-  setRole,
-  loading,
-}: LoginFormContentProps) {
+function DemoLoginSection() {
+  const navigate = useNavigate();
+  const [demoRole, setDemoRole] = useState<AppRole>("Admin");
+  const [loading, setLoading] = useState(false);
+
+  function handleDemo() {
+    setLoading(true);
+    // Build a demo user from the role; never writes to mep-users registry.
+    const slug = demoRole
+      .toLowerCase()
+      .replace(/[\s/]+/g, ".")
+      .replace(/[^a-z.]/g, "");
+    const demoUser: StoredUser = {
+      fullName: `${demoRole} Demo`,
+      email: `${slug}@electraflow.ai`,
+      company: "ElectraFlow Demo",
+      isDemo: true,
+    };
+    setTimeout(() => {
+      setMockSession(demoUser, demoRole);
+      toast.success(`Demo mode: signed in as ${demoRole}`);
+      navigate({ to: getDefaultRoute(demoRole), replace: true });
+      setLoading(false);
+    }, 300);
+  }
+
   return (
-    <>
-      <MobileLogo />
-
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in to your workspace</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Welcome back. Enter your credentials to continue.
-        </p>
+    <div className="mt-8 pt-6 border-t border-dashed">
+      {/* Section header */}
+      <div className="flex items-center gap-2 mb-1">
+        <FlaskConical className="h-3.5 w-3.5 text-amber-500" />
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+          Demo Login
+        </span>
+        <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
+          For role testing only
+        </span>
       </div>
+      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+        Instantly preview any role without creating an account. Demo users do not affect real
+        accounts and are cleared on sign-out.
+      </p>
 
-      <div className="space-y-2">
-        <Label htmlFor="login-email">Work email</Label>
-        <Input
-          id="login-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoComplete="email"
-          placeholder="you@company.com"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="login-pwd">Password</Label>
-          <button
-            type="button"
-            onClick={() => toast.info("Password reset link sent (demo)")}
-            className="text-xs text-primary hover:underline"
-          >
-            Forgot password?
-          </button>
-        </div>
-        <PasswordInput
-          id="login-pwd"
-          value={pwd}
-          onChange={setPwd}
-          autoComplete="current-password"
-        />
-      </div>
-
-      {/* Demo role picker */}
-      <div className="space-y-2">
-        <Label>
-          Demo role{" "}
-          {IS_CLERK_CONFIGURED && (
-            <span className="text-xs text-muted-foreground font-normal">
-              (temporary — tied to your account in Phase 3)
-            </span>
-          )}
-        </Label>
-        <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
-          <SelectTrigger>
+      <div className="space-y-3">
+        <Select value={demoRole} onValueChange={(v) => setDemoRole(v as AppRole)}>
+          <SelectTrigger className="bg-muted/40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -353,22 +221,135 @@ function LoginFormContent({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">Each role sees only its permitted pages.</p>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-9 border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/20"
+          onClick={handleDemo}
+          disabled={loading}
+        >
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />}
+          {loading ? "Loading…" : `Continue as ${demoRole} Demo`}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Mock real-login form ─────────────────────────────────────────────────────
+// Email + password only. Validates against mep-users registry.
+
+function MockLoginForm() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!email.trim()) {
+      setFormError("Please enter your email address.");
+      return;
+    }
+    if (!pwd) {
+      setFormError("Please enter your password.");
+      return;
+    }
+
+    setLoading(true);
+    // Simulate a brief network round-trip for realism.
+    setTimeout(() => {
+      const result = validateLogin(email.trim(), pwd);
+      if (result === "NOT_FOUND") {
+        setFormError("No account found with this email. Please create an account.");
+        setLoading(false);
+        return;
+      }
+      if (result === "WRONG_PASSWORD") {
+        setFormError("Incorrect password. Please try again.");
+        setLoading(false);
+        return;
+      }
+      // result is a MockUser
+      setActiveSession(result);
+      toast.success(`Welcome back, ${result.name.split(" ")[0]}!`);
+      navigate({ to: getDefaultRoute(result.role), replace: true });
+      setLoading(false);
+    }, 400);
+  }
+
+  return (
+    <LoginLayout>
+      <MobileLogo />
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Sign in to your workspace</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Welcome back. Enter your credentials to continue.
+        </p>
       </div>
 
-      <Button type="submit" className="w-full h-10" disabled={loading}>
-        {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-        {loading ? "Signing in…" : "Sign in"}
-      </Button>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="login-email">Work email</Label>
+          <Input
+            id="login-email"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setFormError(null);
+            }}
+            required
+            autoComplete="email"
+            placeholder="you@company.com"
+          />
+        </div>
 
-      <p className="text-sm text-center text-muted-foreground">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="login-pwd">Password</Label>
+            <button
+              type="button"
+              onClick={() => toast.info("Password reset coming in Phase 3")}
+              className="text-xs text-primary hover:underline"
+            >
+              Forgot password?
+            </button>
+          </div>
+          <PasswordInput
+            id="login-pwd"
+            value={pwd}
+            onChange={(v) => {
+              setPwd(v);
+              setFormError(null);
+            }}
+            autoComplete="current-password"
+          />
+        </div>
+
+        {formError && <FormError message={formError} />}
+
+        <Button type="submit" className="w-full h-10" disabled={loading}>
+          {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {loading ? "Signing in…" : "Sign in"}
+        </Button>
+      </form>
+
+      <p className="text-sm text-center text-muted-foreground mt-4">
         Don&apos;t have an account?{" "}
         <Link to="/signup" className="text-primary font-medium hover:underline">
           Create one
         </Link>
       </p>
 
-      <div className="text-xs text-center text-muted-foreground">
+      <DemoLoginSection />
+
+      <div className="text-xs text-center text-muted-foreground mt-6">
         By signing in you agree to the{" "}
         <button type="button" className="hover:underline">
           Terms
@@ -379,13 +360,143 @@ function LoginFormContent({
         </button>
         .
       </div>
-    </>
+    </LoginLayout>
   );
 }
 
-// ─── Route component ─────────────────────────────────────────────────────────
+// ─── Clerk real-login form ────────────────────────────────────────────────────
+// Uses Clerk for identity; role comes from what was stored at signup.
+
+function ClerkLoginForm() {
+  const navigate = useNavigate();
+  const { signIn } = useSignIn();
+  const [email, setEmail] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    if (!signIn) return;
+    setLoading(true);
+    try {
+      const { error: createError } = await signIn.create({ identifier: email, password: pwd });
+      if (createError) {
+        setFormError(createError.longMessage || createError.message || "Sign-in failed.");
+        return;
+      }
+      if (signIn.status === "complete") {
+        const { error: finalizeError } = await signIn.finalize();
+        if (finalizeError) {
+          setFormError(
+            finalizeError.longMessage || finalizeError.message || "Session could not be created.",
+          );
+          return;
+        }
+        // Role was stored at signup in mep-role; just notify providers.
+        notifyAuthChange();
+        const role = localStorage.getItem("mep-role") as AppRole | null;
+        toast.success("Welcome back!");
+        navigate({ to: getDefaultRoute(role), replace: true });
+      } else {
+        setFormError("Sign-in incomplete. Additional verification may be required.");
+      }
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <LoginLayout>
+      <MobileLogo />
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Sign in to your workspace</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Welcome back. Enter your credentials to continue.
+        </p>
+      </div>
+
+      <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="clerk-email">Work email</Label>
+          <Input
+            id="clerk-email"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setFormError(null);
+            }}
+            required
+            autoComplete="email"
+            placeholder="you@company.com"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="clerk-pwd">Password</Label>
+            <button
+              type="button"
+              onClick={() => toast.info("Password reset coming in Phase 3")}
+              className="text-xs text-primary hover:underline"
+            >
+              Forgot password?
+            </button>
+          </div>
+          <PasswordInput
+            id="clerk-pwd"
+            value={pwd}
+            onChange={(v) => {
+              setPwd(v);
+              setFormError(null);
+            }}
+            autoComplete="current-password"
+          />
+        </div>
+
+        {formError && <FormError message={formError} />}
+
+        <Button type="submit" className="w-full h-10" disabled={loading}>
+          {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {loading ? "Signing in…" : "Sign in"}
+        </Button>
+      </form>
+
+      <p className="text-sm text-center text-muted-foreground mt-4">
+        Don&apos;t have an account?{" "}
+        <Link to="/signup" className="text-primary font-medium hover:underline">
+          Create one
+        </Link>
+      </p>
+
+      <DemoLoginSection />
+
+      <div className="text-xs text-center text-muted-foreground mt-6">
+        By signing in you agree to the{" "}
+        <button type="button" className="hover:underline">
+          Terms
+        </button>{" "}
+        and{" "}
+        <button type="button" className="hover:underline">
+          Privacy Policy
+        </button>
+        .
+      </div>
+    </LoginLayout>
+  );
+}
+
+// ─── Route component ──────────────────────────────────────────────────────────
 
 function LoginPage() {
   if (IS_CLERK_CONFIGURED) return <ClerkLoginForm />;
   return <MockLoginForm />;
 }
+
+// Keep exported for Clerk login, used by ClerkLoginForm
+export { setStoredRole };

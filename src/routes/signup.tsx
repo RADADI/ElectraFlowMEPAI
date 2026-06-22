@@ -14,14 +14,13 @@ import {
 import { Loader2 } from "lucide-react";
 import { ROLES } from "@/lib/dummy-data";
 import type { AppRole } from "@/lib/permissions";
-import { setMockSession } from "@/contexts/auth-context";
+import { registerUser, setActiveSession, setMockSession } from "@/contexts/auth-context";
 import { AuthLeftPanel, MobileLogo, PasswordInput } from "@/routes/login";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Create account — ElectraFlow AI" }] }),
   beforeLoad: () => {
-    // If already signed in, skip signup
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("mep-role");
       if (role) throw redirect({ to: "/" });
@@ -94,8 +93,6 @@ function FieldError({ msg }: { msg?: string }) {
 
 // ─── Shared form layout ───────────────────────────────────────────────────────
 
-// AuthLeftPanel already renders its own grid column (hidden lg:flex …).
-// Just pair it with the form column inside a 2-col grid.
 function SignupLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen w-full grid lg:grid-cols-2 bg-background">
@@ -178,7 +175,7 @@ function SignupFormFields({ form, errors, touched, onChange, onBlur, loading }: 
         {touched.company && <FieldError msg={errors.company} />}
       </div>
 
-      {/* Job Role */}
+      {/* Job Role — fixed at signup, cannot be changed from the login form */}
       <div className="space-y-1.5">
         <Label>Job role</Label>
         <Select value={form.role} onValueChange={(v) => onChange("role", v)}>
@@ -194,7 +191,7 @@ function SignupFormFields({ form, errors, touched, onChange, onBlur, loading }: 
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Your role determines which pages you can access.
+          Your role is fixed after signup and controls your page access.
         </p>
       </div>
 
@@ -269,10 +266,7 @@ function useSignupForm() {
   function onChange(field: keyof SignupForm, value: string) {
     const next = { ...form, [field]: value };
     setForm(next);
-    // Re-validate on every change once a field has been touched
-    if (touched[field]) {
-      setErrors(validate(next));
-    }
+    if (touched[field]) setErrors(validate(next));
   }
 
   function onBlur(field: keyof SignupForm) {
@@ -285,16 +279,37 @@ function useSignupForm() {
     setTouched(Object.fromEntries(all.map((k) => [k, true])));
   }
 
-  return { form, errors, touched, onChange, onBlur, touchAll, loading, setLoading };
+  return {
+    form,
+    errors,
+    setErrors,
+    touched,
+    setTouched,
+    onChange,
+    onBlur,
+    touchAll,
+    loading,
+    setLoading,
+  };
 }
 
-// ─── Clerk-aware signup form ──────────────────────────────────────────────────
+// ─── Clerk signup form ────────────────────────────────────────────────────────
 
 function ClerkSignupForm() {
   const navigate = useNavigate();
   const { signUp } = useSignUp();
-  const { form, errors, touched, onChange, onBlur, touchAll, loading, setLoading } =
-    useSignupForm();
+  const {
+    form,
+    errors,
+    setErrors,
+    touched,
+    setTouched,
+    onChange,
+    onBlur,
+    touchAll,
+    loading,
+    setLoading,
+  } = useSignupForm();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -305,15 +320,35 @@ function ClerkSignupForm() {
 
     setLoading(true);
     try {
-      const nameParts = form.fullName.trim().split(" ");
-      const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(" ") || "";
+      // 1. Register in mock registry (checks duplicate email)
+      let newUser;
+      try {
+        newUser = registerUser({
+          name: form.fullName,
+          email: form.email,
+          company: form.company,
+          role: form.role,
+          password: form.password,
+        });
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message === "EMAIL_TAKEN") {
+          setErrors((prev) => ({
+            ...prev,
+            email: "An account with this email already exists. Sign in instead.",
+          }));
+          setTouched((prev) => ({ ...prev, email: true }));
+          return;
+        }
+        throw err;
+      }
 
+      // 2. Register with Clerk
+      const nameParts = form.fullName.trim().split(" ");
       const { error: createError } = await signUp.create({
         emailAddress: form.email,
         password: form.password,
-        firstName,
-        lastName,
+        firstName: nameParts[0],
+        lastName: nameParts.slice(1).join(" ") || "",
       });
 
       if (createError) {
@@ -322,23 +357,13 @@ function ClerkSignupForm() {
       }
 
       if (signUp.status === "complete") {
-        const { error: finalizeError } = await signUp.finalize();
-        if (finalizeError) {
-          toast.error(
-            finalizeError.longMessage || finalizeError.message || "Account could not be created.",
-          );
-          return;
-        }
+        await signUp.finalize();
       } else if (signUp.status === "missing_requirements") {
-        // Email verification required — inform user and fall through to mock storage
-        toast.info("Account created! Check your email to verify, then sign in.");
+        toast.info("Check your email to verify your address, then sign in.");
       }
 
-      // Atomically write profile + role so the topbar shows immediately.
-      setMockSession(
-        { fullName: form.fullName, email: form.email, company: form.company },
-        form.role,
-      );
+      // 3. Start the session
+      setActiveSession(newUser);
       toast.success("Account created! Let's set up your workspace.");
       navigate({ to: "/onboarding", replace: true });
     } catch (err: unknown) {
@@ -364,12 +389,22 @@ function ClerkSignupForm() {
   );
 }
 
-// ─── Mock-only signup form ────────────────────────────────────────────────────
+// ─── Mock signup form ─────────────────────────────────────────────────────────
 
 function MockSignupForm() {
   const navigate = useNavigate();
-  const { form, errors, touched, onChange, onBlur, touchAll, loading, setLoading } =
-    useSignupForm();
+  const {
+    form,
+    errors,
+    setErrors,
+    touched,
+    setTouched,
+    onChange,
+    onBlur,
+    touchAll,
+    loading,
+    setLoading,
+  } = useSignupForm();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -378,15 +413,31 @@ function MockSignupForm() {
     if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
-    // Simulate brief network delay
     setTimeout(() => {
-      setMockSession(
-        { fullName: form.fullName, email: form.email, company: form.company },
-        form.role,
-      );
-      toast.success("Account created! Let's set up your workspace.");
-      navigate({ to: "/onboarding", replace: true });
-      setLoading(false);
+      try {
+        const newUser = registerUser({
+          name: form.fullName,
+          email: form.email,
+          company: form.company,
+          role: form.role,
+          password: form.password,
+        });
+        setActiveSession(newUser);
+        toast.success("Account created! Let's set up your workspace.");
+        navigate({ to: "/onboarding", replace: true });
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message === "EMAIL_TAKEN") {
+          setErrors((prev) => ({
+            ...prev,
+            email: "An account with this email already exists. Sign in instead.",
+          }));
+          setTouched((prev) => ({ ...prev, email: true }));
+        } else {
+          toast.error("Signup failed. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
     }, 500);
   }
 

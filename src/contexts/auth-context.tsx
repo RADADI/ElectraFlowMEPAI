@@ -2,12 +2,35 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useUser, useClerk } from "@clerk/react";
 import type { AppRole } from "@/lib/permissions";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
+/**
+ * A registered user account stored in mep-users (the mock "database").
+ * Password is kept plaintext — acceptable for a no-backend demo; never sent
+ * over the wire.
+ */
+export interface MockUser {
+  id: string;
+  name: string;
+  email: string;
+  company: string;
+  role: AppRole;
+  password: string;
+  onboardingDone: boolean;
+  createdAt: string;
+}
+
+/**
+ * The active session object stored in mep-user.
+ * Contains no password; id links back to MockUser for registry updates.
+ * isDemo is true when the session was created via Demo Login (no registry entry).
+ */
 export interface StoredUser {
   fullName: string;
   email: string;
   company: string;
+  id?: string; // present for real accounts, absent for demo sessions
+  isDemo?: boolean;
 }
 
 export interface AuthState {
@@ -19,10 +42,21 @@ export interface AuthState {
   company: string;
   imageUrl: string | null;
   initials: string;
+  isDemo: boolean;
   signOut: () => void;
 }
 
-// ─── Context ─────────────────────────────────────────────────────────────────
+// ─── Storage key constants ────────────────────────────────────────────────────
+
+const ROLE_KEY = "mep-role";
+const USER_KEY = "mep-user";
+const ONBOARDING_KEY = "mep-onboarding-done";
+/** Persists across sign-outs — all registered mock accounts. */
+const USERS_KEY = "mep-users";
+/** Custom event name that auth helpers dispatch so providers refresh state immediately. */
+const AUTH_CHANGE_EVENT = "mep-auth-change";
+
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 const AuthContext = createContext<AuthState | null>(null);
 
@@ -32,19 +66,7 @@ export function useAuth(): AuthState {
   return ctx;
 }
 
-// ─── localStorage key constants ───────────────────────────────────────────────
-
-const ROLE_KEY = "mep-role";
-const USER_KEY = "mep-user";
-const ONBOARDING_KEY = "mep-onboarding-done";
-
-/**
- * Custom event fired by setMockSession / clearAuthStorage so that
- * providers immediately update their React state without a page reload.
- */
-const AUTH_CHANGE_EVENT = "mep-auth-change";
-
-// ─── Low-level localStorage helpers ──────────────────────────────────────────
+// ─── Low-level session helpers ────────────────────────────────────────────────
 
 export function getStoredRole(): AppRole | null {
   if (typeof window === "undefined") return null;
@@ -90,13 +112,92 @@ export function clearOnboardingDone() {
   if (typeof window !== "undefined") localStorage.removeItem(ONBOARDING_KEY);
 }
 
-// ─── High-level session helpers ───────────────────────────────────────────────
+// ─── User registry helpers (mep-users) ───────────────────────────────────────
+
+export function getRegisteredUsers(): MockUser[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(USERS_KEY);
+    return raw ? (JSON.parse(raw) as MockUser[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRegisteredUsers(users: MockUser[]): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  }
+}
+
+export function findUserByEmail(email: string): MockUser | undefined {
+  const needle = email.trim().toLowerCase();
+  return getRegisteredUsers().find((u) => u.email === needle);
+}
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+}
 
 /**
- * Notifies all auth providers to re-read localStorage and update their state.
- * Call this after any direct localStorage write that isn't already handled
- * by setMockSession / clearAuthStorage.
+ * Creates a new account in the mock registry.
+ * Throws Error("EMAIL_TAKEN") if the email already exists.
  */
+export function registerUser(data: {
+  name: string;
+  email: string;
+  company: string;
+  role: AppRole;
+  password: string;
+}): MockUser {
+  const users = getRegisteredUsers();
+  const needle = data.email.trim().toLowerCase();
+  if (users.some((u) => u.email === needle)) {
+    throw new Error("EMAIL_TAKEN");
+  }
+  const newUser: MockUser = {
+    id: generateId(),
+    name: data.name,
+    email: needle,
+    company: data.company,
+    role: data.role,
+    password: data.password,
+    onboardingDone: false,
+    createdAt: new Date().toISOString(),
+  };
+  saveRegisteredUsers([...users, newUser]);
+  return newUser;
+}
+
+/**
+ * Partially updates a user's registry entry (e.g. onboardingDone).
+ */
+export function updateRegisteredUser(id: string, updates: Partial<Omit<MockUser, "id">>): void {
+  if (typeof window === "undefined") return;
+  const users = getRegisteredUsers();
+  const idx = users.findIndex((u) => u.id === id);
+  if (idx !== -1) {
+    users[idx] = { ...users[idx], ...updates };
+    saveRegisteredUsers(users);
+  }
+}
+
+export type LoginResult = MockUser | "NOT_FOUND" | "WRONG_PASSWORD";
+
+/**
+ * Validates email + password against the mock registry.
+ * Returns the MockUser on success, or an error code string.
+ */
+export function validateLogin(email: string, password: string): LoginResult {
+  const user = findUserByEmail(email);
+  if (!user) return "NOT_FOUND";
+  if (user.password !== password) return "WRONG_PASSWORD";
+  return user;
+}
+
+// ─── High-level session helpers ───────────────────────────────────────────────
+
+/** Notify all auth providers to re-read localStorage immediately. */
 export function notifyAuthChange() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(AUTH_CHANGE_EVENT));
@@ -104,23 +205,46 @@ export function notifyAuthChange() {
 }
 
 /**
- * Atomically writes a full session (user profile + role) to localStorage
- * and immediately notifies providers so React state updates without a reload.
- *
- * Always call this instead of bare setStoredUser + setStoredRole.
+ * Starts an authenticated session for a REGISTERED user.
+ * Writes mep-user + mep-role; restores their onboarding status.
+ * Does NOT write to mep-users (registry stays unchanged).
  */
-export function setMockSession(user: StoredUser, role: AppRole) {
+export function setActiveSession(user: MockUser): void {
+  setStoredUser({
+    fullName: user.name,
+    email: user.email,
+    company: user.company,
+    id: user.id,
+    isDemo: false,
+  });
+  setStoredRole(user.role);
+  // Restore onboarding status so returning users aren't sent through onboarding again.
+  if (user.onboardingDone) {
+    setOnboardingDone();
+  } else {
+    clearOnboardingDone();
+  }
+  notifyAuthChange();
+}
+
+/**
+ * Starts a DEMO session (role-testing only).
+ * Writes mep-user + mep-role; never touches the user registry.
+ * Demo users do NOT overwrite registered accounts — they're isolated.
+ */
+export function setMockSession(user: StoredUser, role: AppRole): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  localStorage.setItem(USER_KEY, JSON.stringify({ ...user, isDemo: true }));
   localStorage.setItem(ROLE_KEY, role);
   notifyAuthChange();
 }
 
 /**
- * Removes all auth-related keys from localStorage and notifies providers
- * so React state is cleared immediately, before any page redirect.
+ * Clears the ACTIVE SESSION only.
+ * mep-users (the registry) is intentionally NOT removed — registered
+ * accounts must survive across sign-outs.
  */
-export function clearAuthStorage() {
+export function clearAuthStorage(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ROLE_KEY);
   localStorage.removeItem(USER_KEY);
@@ -139,23 +263,16 @@ function toInitials(name: string): string {
     .join("");
 }
 
-/** Read the current session snapshot from localStorage. */
 function readSession() {
   return { role: getStoredRole(), user: getStoredUser() };
 }
 
 // ─── Clerk provider ───────────────────────────────────────────────────────────
 
-/**
- * Used when VITE_CLERK_PUBLISHABLE_KEY is set.
- * Clerk supplies the real user identity; localStorage only tracks the role.
- * Listens to AUTH_CHANGE_EVENT so role changes propagate immediately.
- */
 function ClerkAuthProvider({ children }: { children: ReactNode }) {
   const { user, isSignedIn, isLoaded } = useUser();
   const { signOut: clerkSignOut } = useClerk();
 
-  // Force a re-render whenever role or user storage changes.
   const [, setTick] = useState(0);
   useEffect(() => {
     function refresh() {
@@ -168,8 +285,6 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
   const role = getStoredRole();
   const storedUser = getStoredUser();
 
-  // Clerk data takes priority; stored user is the fallback for roles not yet
-  // synced by Clerk (e.g., right after finalize() before useUser refreshes).
   const displayName =
     user?.fullName ||
     storedUser?.fullName ||
@@ -187,6 +302,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
     company,
     imageUrl: user?.imageUrl || null,
     initials: toInitials(displayName) || "EF",
+    isDemo: storedUser?.isDemo ?? false,
     signOut: () => {
       clearAuthStorage();
       clerkSignOut({ redirectUrl: "/login" });
@@ -198,18 +314,9 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
 
 // ─── Mock provider ────────────────────────────────────────────────────────────
 
-/**
- * Used when no Clerk key is set — pure localStorage mock.
- *
- * Auth state lives in React state (not bare localStorage reads) so that
- * setMockSession / clearAuthStorage update the UI immediately without a
- * page reload or waiting for the next re-render cycle.
- */
 function MockAuthProvider({ children }: { children: ReactNode }) {
-  // Seed state from localStorage on first render.
   const [session, setSession] = useState(() => readSession());
 
-  // Re-read whenever login / logout helpers fire the custom event.
   useEffect(() => {
     function refresh() {
       setSession(readSession());
@@ -220,8 +327,6 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
 
   const { role, user: storedUser } = session;
   const isSignedIn = !!role;
-
-  // Prefer the name set at signup/login; fall back to a role-based placeholder.
   const displayName = storedUser?.fullName || (role ? `${role} Demo` : "Guest");
   const email = storedUser?.email || "";
   const company = storedUser?.company || "";
@@ -236,10 +341,9 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
     company,
     imageUrl: null,
     initials,
+    isDemo: storedUser?.isDemo ?? false,
     signOut: () => {
-      // 1. Clear state + notify providers (reactive update).
       clearAuthStorage();
-      // 2. Replace current history entry so "back" can't return to the app.
       window.location.replace("/login");
     },
   };
@@ -253,10 +357,6 @@ const IS_CLERK_CONFIGURED = !!(
   typeof import.meta !== "undefined" && import.meta.env?.VITE_CLERK_PUBLISHABLE_KEY
 );
 
-/**
- * Wrap the app root with this provider.
- * Automatically selects Clerk mode vs mock mode based on env var.
- */
 export function AuthProvider({ children }: { children: ReactNode }) {
   if (IS_CLERK_CONFIGURED) {
     return <ClerkAuthProvider>{children}</ClerkAuthProvider>;

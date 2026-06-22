@@ -26,7 +26,12 @@ import {
   Zap,
   CheckCircle2,
 } from "lucide-react";
-import { getStoredRole, getStoredUser, setOnboardingDone } from "@/contexts/auth-context";
+import {
+  getStoredRole,
+  getStoredUser,
+  setOnboardingDone,
+  updateRegisteredUser,
+} from "@/contexts/auth-context";
 import { getDefaultRoute } from "@/lib/permissions";
 import { DISCIPLINES } from "@/lib/dummy-data";
 import { toast } from "sonner";
@@ -555,6 +560,12 @@ function OnboardingPage() {
 
   function handleComplete() {
     setOnboardingDone();
+    // Persist onboardingDone in the registry so returning users aren't
+    // redirected through onboarding again on future logins.
+    const session = getStoredUser();
+    if (session?.id) {
+      updateRegisteredUser(session.id, { onboardingDone: true });
+    }
     toast.success("Workspace ready! Welcome to ElectraFlow AI.");
     navigate({ to: getDefaultRoute(role), replace: true });
   }
