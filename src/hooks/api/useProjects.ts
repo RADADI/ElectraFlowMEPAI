@@ -2,8 +2,15 @@
  * React Query hooks — Projects (Phase 4)
  *
  * All hooks consume ProjectView (never Project directly).
- * When Supabase is configured they fetch real data; otherwise they return
- * session-overlay + dummy-data — the UI never needs to know which.
+ *
+ * Key change vs Phase 3:
+ *   useProjects() now THROWS when the service returns an error instead of
+ *   silently returning [].  This means React Query sets isError = true and
+ *   the error object is available to the UI, which then shows a friendly
+ *   "Failed to load projects" state.
+ *
+ *   Mutation hooks still return ServiceResult so the form/modal can inspect
+ *   the error without relying on React Query's error boundary.
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -29,23 +36,44 @@ export const PROJECT_KEYS = {
 
 // ─── List ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Returns ProjectView[].
+ * Sets isError when the service returns an error (e.g. org not configured,
+ * Supabase unavailable).  The error message is surfaced in the UI.
+ */
 export function useProjects() {
   return useQuery({
     queryKey: PROJECT_KEYS.all,
-    queryFn: () => listProjects(),
-    select: (result) => result.data ?? [],
+    queryFn: async () => {
+      const result = await listProjects();
+      // Throw so React Query sets isError = true and the error message
+      // propagates to the UI's error EmptyState.
+      if (result.error) throw new Error(result.error.message);
+      return result.data ?? [];
+    },
     staleTime: 30_000,
+    retry: (failureCount, error) => {
+      // Don't retry org-config errors — they won't self-heal
+      const msg = (error as Error)?.message ?? "";
+      if (msg.includes("Organization not configured")) return false;
+      return failureCount < 2;
+    },
   });
 }
 
 // ─── Detail ───────────────────────────────────────────────────────────────────
 
+/**
+ * Returns the full ServiceResult so the detail page can distinguish
+ * "not found" from "server error" from "loading".
+ */
 export function useProject(id: string) {
   return useQuery({
     queryKey: PROJECT_KEYS.detail(id),
     queryFn: () => getProject(id),
-    // Return the full ServiceResult so callers can distinguish null data from errors
     enabled: !!id,
+    staleTime: 30_000,
+    retry: (failureCount, _error) => failureCount < 1,
   });
 }
 
@@ -80,6 +108,7 @@ export function useCreateProject() {
   return useMutation({
     mutationFn: (payload: ProjectCreateInput) => createProject(payload),
     onSuccess: () => {
+      // Refetch the list so the new project appears from the real data source
       qc.invalidateQueries({ queryKey: PROJECT_KEYS.all });
     },
   });
@@ -105,6 +134,9 @@ export function useArchiveProject() {
   return useMutation({
     mutationFn: (id: string) => archiveProject(id),
     onSuccess: (_result, id) => {
+      // Both invalidations ensure:
+      //   • Project disappears from the list
+      //   • Detail page shows "not found" if revisited
       qc.invalidateQueries({ queryKey: PROJECT_KEYS.all });
       qc.invalidateQueries({ queryKey: PROJECT_KEYS.detail(id) });
     },
