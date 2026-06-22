@@ -33,7 +33,13 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
   ],
   "/apps": ["Admin"],
   "/ai": ["Admin", "Project Manager", "Senior Electrical Engineer", "Electrical Engineer"],
-  "/projects": ["Admin", "Project Manager", "Senior Electrical Engineer", "Electrical Engineer"],
+  "/projects": [
+    "Admin",
+    "Project Manager",
+    "Senior Electrical Engineer",
+    "Electrical Engineer",
+    "Executive",
+  ],
   "/documents": [
     "Admin",
     "Project Manager",
