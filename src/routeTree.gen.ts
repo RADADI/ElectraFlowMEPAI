@@ -37,6 +37,7 @@ import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppClientPortalRouteImport } from './routes/_app.client-portal'
 import { Route as AppAppsRouteImport } from './routes/_app.apps'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
+import { Route as AppActivityRouteImport } from './routes/_app.activity'
 import { Route as AppTimesheetsIdRouteImport } from './routes/_app.timesheets.$id'
 import { Route as AppSubmittalsIdRouteImport } from './routes/_app.submittals.$id'
 import { Route as AppRfiIdRouteImport } from './routes/_app.rfi.$id'
@@ -183,6 +184,11 @@ const AppAiRoute = AppAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => AppRoute,
 } as any)
+const AppActivityRoute = AppActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTimesheetsIdRoute = AppTimesheetsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/activity': typeof AppActivityRoute
   '/ai': typeof AppAiRoute
   '/apps': typeof AppAppsRoute
   '/client-portal': typeof AppClientPortalRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/activity': typeof AppActivityRoute
   '/ai': typeof AppAiRoute
   '/apps': typeof AppAppsRoute
   '/client-portal': typeof AppClientPortalRoute
@@ -291,6 +299,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/_app/activity': typeof AppActivityRoute
   '/_app/ai': typeof AppAiRoute
   '/_app/apps': typeof AppAppsRoute
   '/_app/client-portal': typeof AppClientPortalRoute
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/unauthorized'
+    | '/activity'
     | '/ai'
     | '/apps'
     | '/client-portal'
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/unauthorized'
+    | '/activity'
     | '/ai'
     | '/apps'
     | '/client-portal'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/unauthorized'
+    | '/_app/activity'
     | '/_app/ai'
     | '/_app/apps'
     | '/_app/client-portal'
@@ -637,6 +649,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/activity': {
+      id: '/_app/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/timesheets/$id': {
       id: '/_app/timesheets/$id'
       path: '/$id'
@@ -754,6 +773,7 @@ const AppTimesheetsRouteWithChildren = AppTimesheetsRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppActivityRoute: typeof AppActivityRoute
   AppAiRoute: typeof AppAiRoute
   AppAppsRoute: typeof AppAppsRoute
   AppClientPortalRoute: typeof AppClientPortalRoute
@@ -779,6 +799,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppActivityRoute: AppActivityRoute,
   AppAiRoute: AppAiRoute,
   AppAppsRoute: AppAppsRoute,
   AppClientPortalRoute: AppClientPortalRoute,

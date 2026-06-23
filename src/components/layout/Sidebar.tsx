@@ -21,6 +21,7 @@ import {
   Zap,
   Clock,
   CalendarOff,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { canAccess } from "@/lib/permissions";
@@ -46,6 +47,7 @@ export const navItems = [
   { to: "/reports", label: "Reports", icon: FileBarChart },
   { to: "/client-portal", label: "Client Portal", icon: UserSquare2 },
   { to: "/users", label: "Users", icon: UserCog },
+  { to: "/activity", label: "Activity Center", icon: Activity },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 

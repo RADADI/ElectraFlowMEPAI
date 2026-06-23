@@ -137,6 +137,24 @@ export const supabase: SupabaseClient<any> | null = IS_SUPABASE_CONFIGURED
     })
   : null;
 
+// ─── Realtime JWT auth ────────────────────────────────────────────────────────
+
+/**
+ * Called before subscribing to a Supabase Realtime channel.
+ * Uses the existing Clerk token getter (already wired by ClerkAuthProvider)
+ * to set auth on the WebSocket connection — separate from HTTP fetch headers.
+ * Safe to call in mock mode (no-op when supabase is null or no getter is set).
+ */
+export async function refreshRealtimeAuth(): Promise<void> {
+  if (!supabase || !_clerkTokenGetter) return;
+  try {
+    const token = await _clerkTokenGetter();
+    if (token) supabase.realtime.setAuth(token);
+  } catch {
+    // non-fatal — channel will fallback to anon-key access (RLS blocks protected data)
+  }
+}
+
 // ─── Dev diagnostics ─────────────────────────────────────────────────────────
 
 if (import.meta.env.DEV) {

@@ -1066,6 +1066,26 @@ export interface Database {
         Insert: PaymentInsert;
         Update: Partial<PaymentInsert>;
       };
+      notifications: {
+        Row: Notification;
+        Insert: NotificationInsert;
+        Update: NotificationUpdate;
+      };
+      notification_preferences: {
+        Row: NotificationPreference;
+        Insert: NotificationPreferenceInsert;
+        Update: NotificationPreferenceUpdate;
+      };
+      activity_events: {
+        Row: ActivityEvent;
+        Insert: ActivityEventInsert;
+        Update: Partial<ActivityEventInsert>;
+      };
+      notification_deliveries: {
+        Row: NotificationDelivery;
+        Insert: Omit<NotificationDelivery, "id">;
+        Update: Partial<NotificationDelivery>;
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -1081,4 +1101,112 @@ export interface Database {
       ncr_status: NCRStatus;
     };
   };
+}
+
+// ─── Phase 13: Notifications & Activity Types ─────────────────────────────────
+
+export type NotificationPriority = "low" | "normal" | "high" | "critical";
+
+export type NotificationCategory =
+  | "project"
+  | "document"
+  | "submittal"
+  | "rfi"
+  | "ncr"
+  | "resource"
+  | "timesheet"
+  | "financial"
+  | "user"
+  | "system"
+  | "client"
+  | "ai"
+  | "report"
+  | "meeting"
+  | "electrical"
+  | "billing";
+
+export type NotificationSeverity = "info" | "success" | "warning" | "error";
+
+export type NotificationChannel = "in_app" | "email" | "future_webhook";
+
+export type NotificationFrequency = "immediate" | "daily_digest" | "weekly_digest" | "disabled";
+
+export type ActivityVisibility = "internal" | "client_visible" | "private";
+
+export interface Notification {
+  id: string;
+  organization_id: string;
+  recipient_profile_id: string;
+  actor_profile_id: string | null;
+  event_type: string;
+  title: string;
+  message: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  route: string | null;
+  priority: NotificationPriority;
+  category: NotificationCategory;
+  severity: NotificationSeverity;
+  is_pinned: boolean;
+  read_at: string | null;
+  dismissed_at: string | null;
+  snoozed_until: string | null;
+  created_at: string;
+  deleted_at: string | null;
+}
+
+export type NotificationInsert = Omit<Notification, "id" | "created_at" | "deleted_at">;
+
+export type NotificationUpdate = Partial<
+  Pick<Notification, "read_at" | "dismissed_at" | "snoozed_until" | "is_pinned" | "deleted_at">
+>;
+
+export interface NotificationPreference {
+  id: string;
+  organization_id: string;
+  profile_id: string;
+  channel: NotificationChannel;
+  event_type: string;
+  enabled: boolean;
+  frequency: NotificationFrequency;
+  created_at: string;
+  updated_at: string;
+}
+
+export type NotificationPreferenceInsert = Omit<
+  NotificationPreference,
+  "id" | "created_at" | "updated_at"
+>;
+
+export type NotificationPreferenceUpdate = Partial<
+  Pick<NotificationPreference, "enabled" | "frequency">
+>;
+
+export interface ActivityEvent {
+  id: string;
+  organization_id: string;
+  actor_profile_id: string | null;
+  event_type: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  entity_label: string | null;
+  message: string;
+  metadata: Record<string, unknown>;
+  category: NotificationCategory;
+  visibility: ActivityVisibility;
+  created_at: string;
+  deleted_at: string | null;
+}
+
+export type ActivityEventInsert = Omit<ActivityEvent, "id" | "created_at" | "deleted_at">;
+
+export interface NotificationDelivery {
+  id: string;
+  organization_id: string;
+  notification_id: string;
+  channel: NotificationChannel;
+  status: "pending" | "sent" | "failed" | "skipped";
+  attempted_at: string | null;
+  delivered_at: string | null;
+  error_message: string | null;
 }

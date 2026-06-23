@@ -121,6 +121,17 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
     "HR",
     "Executive",
   ],
+  /** Phase 13: Activity Center — all authenticated users (Client included) */
+  "/activity": [
+    "Admin",
+    "Project Manager",
+    "Senior Electrical Engineer",
+    "Electrical Engineer",
+    "QA/QC Engineer",
+    "HR",
+    "Executive",
+    "Client",
+  ],
 };
 
 /**

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Search, Moon, Sun, LogOut, User, Settings, ChevronDown, Menu } from "lucide-react";
+import { Search, Moon, Sun, LogOut, User, Settings, ChevronDown, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,9 +15,9 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useTheme } from "@/components/theme-provider";
 import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { NavLinks, SidebarBrand, SidebarFooter } from "@/components/layout/Sidebar";
 import { useAuth } from "@/contexts/auth-context";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function Topbar() {
   const { theme, toggle } = useTheme();
@@ -77,16 +77,7 @@ export function Topbar() {
       </Button>
 
       {/* Notifications */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="relative"
-        onClick={() => toast.info("3 new notifications")}
-        aria-label="Notifications"
-      >
-        <Bell className="h-4 w-4" />
-        <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
-      </Button>
+      <NotificationBell />
 
       {/* User profile dropdown */}
       <DropdownMenu>
