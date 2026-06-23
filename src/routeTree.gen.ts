@@ -25,6 +25,7 @@ import { Route as AppRfiRouteImport } from './routes/_app.rfi'
 import { Route as AppResourcesRouteImport } from './routes/_app.resources'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
+import { Route as AppProfileRouteImport } from './routes/_app.profile'
 import { Route as AppPmRouteImport } from './routes/_app.pm'
 import { Route as AppNcrRouteImport } from './routes/_app.ncr'
 import { Route as AppMeetingsRouteImport } from './routes/_app.meetings'
@@ -120,6 +121,11 @@ const AppReportsRoute = AppReportsRouteImport.update({
 const AppProjectsRoute = AppProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPmRoute = AppPmRouteImport.update({
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/meetings': typeof AppMeetingsRoute
   '/ncr': typeof AppNcrRoute
   '/pm': typeof AppPmRoute
+  '/profile': typeof AppProfileRoute
   '/projects': typeof AppProjectsRouteWithChildren
   '/reports': typeof AppReportsRoute
   '/resources': typeof AppResourcesRouteWithChildren
@@ -258,6 +265,7 @@ export interface FileRoutesByTo {
   '/meetings': typeof AppMeetingsRoute
   '/ncr': typeof AppNcrRoute
   '/pm': typeof AppPmRoute
+  '/profile': typeof AppProfileRoute
   '/projects': typeof AppProjectsRouteWithChildren
   '/reports': typeof AppReportsRoute
   '/resources': typeof AppResourcesRouteWithChildren
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   '/_app/meetings': typeof AppMeetingsRoute
   '/_app/ncr': typeof AppNcrRoute
   '/_app/pm': typeof AppPmRoute
+  '/_app/profile': typeof AppProfileRoute
   '/_app/projects': typeof AppProjectsRouteWithChildren
   '/_app/reports': typeof AppReportsRoute
   '/_app/resources': typeof AppResourcesRouteWithChildren
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/meetings'
     | '/ncr'
     | '/pm'
+    | '/profile'
     | '/projects'
     | '/reports'
     | '/resources'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/meetings'
     | '/ncr'
     | '/pm'
+    | '/profile'
     | '/projects'
     | '/reports'
     | '/resources'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/_app/meetings'
     | '/_app/ncr'
     | '/_app/pm'
+    | '/_app/profile'
     | '/_app/projects'
     | '/_app/reports'
     | '/_app/resources'
@@ -539,6 +551,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/profile': {
+      id: '/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pm': {
@@ -746,6 +765,7 @@ interface AppRouteChildren {
   AppMeetingsRoute: typeof AppMeetingsRoute
   AppNcrRoute: typeof AppNcrRoute
   AppPmRoute: typeof AppPmRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppProjectsRoute: typeof AppProjectsRouteWithChildren
   AppReportsRoute: typeof AppReportsRoute
   AppResourcesRoute: typeof AppResourcesRouteWithChildren
@@ -770,6 +790,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMeetingsRoute: AppMeetingsRoute,
   AppNcrRoute: AppNcrRoute,
   AppPmRoute: AppPmRoute,
+  AppProfileRoute: AppProfileRoute,
   AppProjectsRoute: AppProjectsRouteWithChildren,
   AppReportsRoute: AppReportsRoute,
   AppResourcesRoute: AppResourcesRouteWithChildren,
