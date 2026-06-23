@@ -25,7 +25,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, Clock, FolderOpen, Info, Pencil } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  FolderOpen,
+  Info,
+  Pencil,
+  ExternalLink,
+  TrendingUp,
+  TrendingDown,
+  Receipt,
+  Banknote,
+} from "lucide-react";
+import { useProjectBudget, useExpenses, useInvoices } from "@/hooks/api/useFinancials";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import {
@@ -500,34 +512,7 @@ function ProjectDetailPage() {
         {/* ── Financials ────────────────────────────────────────────────────── */}
         {canSeeFinancials && (
           <TabsContent value="financials">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                    Budget
-                  </div>
-                  <div className="text-xl font-semibold">{formatMoney(project.budget)}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                    Estimated Cost
-                  </div>
-                  <div className="text-xl font-semibold text-muted-foreground">—</div>
-                  <div className="text-xs text-muted-foreground mt-1">Not configured yet</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                    Actual Cost
-                  </div>
-                  <div className="text-xl font-semibold text-muted-foreground">—</div>
-                  <div className="text-xs text-muted-foreground mt-1">Not configured yet</div>
-                </CardContent>
-              </Card>
-            </div>
+            <ProjectFinancialsTab projectId={project.id} projectBudget={project.budget} />
           </TabsContent>
         )}
       </Tabs>
@@ -535,5 +520,276 @@ function ProjectDetailPage() {
       {/* Edit modal */}
       <ProjectFormModal mode="edit" project={project} open={editOpen} onOpenChange={setEditOpen} />
     </>
+  );
+}
+
+// ─── Project Financials Tab ───────────────────────────────────────────────────
+
+function fmtMoney(v: number | null | undefined): string {
+  if (v == null) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(v);
+}
+
+const EXP_STATUS: Record<string, string> = {
+  pending: "bg-yellow-50 text-yellow-700",
+  approved: "bg-green-50 text-green-700",
+  rejected: "bg-red-50 text-red-700",
+};
+
+const INV_STATUS: Record<string, string> = {
+  draft: "bg-slate-50 text-slate-700",
+  sent: "bg-blue-50 text-blue-700",
+  paid: "bg-green-50 text-green-700",
+  overdue: "bg-red-50 text-red-700",
+  voided: "bg-gray-100 text-gray-500",
+};
+
+function ProjectFinancialsTab({
+  projectId,
+  projectBudget,
+}: {
+  projectId: string;
+  projectBudget: number | null;
+}) {
+  const budgetQ = useProjectBudget(projectId);
+  const expensesQ = useExpenses({ projectId });
+  const invoicesQ = useInvoices({ projectId });
+
+  const budget = budgetQ.data;
+  const expenses = (expensesQ.data ?? []).slice(0, 5);
+  const invoices = (invoicesQ.data ?? []).slice(0, 5);
+
+  const revisedBudget = budget?.revised_budget ?? projectBudget ?? 0;
+  const totalActual = budget?.total_actual ?? 0;
+  const variance = budget ? budget.variance : revisedBudget - totalActual;
+  const pctUsed = revisedBudget > 0 ? (totalActual / revisedBudget) * 100 : 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Budget summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+              Revised Budget
+            </p>
+            {budgetQ.isLoading ? (
+              <Skeleton className="h-6 w-24" />
+            ) : (
+              <p className="text-xl font-semibold">{fmtMoney(revisedBudget)}</p>
+            )}
+            {budget?.approved_changes !== undefined && budget.approved_changes !== 0 && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Base {fmtMoney(budget.total_budget)} +{" "}
+                <span className={budget.approved_changes >= 0 ? "text-green-600" : "text-red-600"}>
+                  COs {fmtMoney(budget.approved_changes)}
+                </span>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+              Actual Cost
+            </p>
+            {budgetQ.isLoading ? (
+              <Skeleton className="h-6 w-24" />
+            ) : (
+              <p className="text-xl font-semibold">{fmtMoney(totalActual)}</p>
+            )}
+            {revisedBudget > 0 && (
+              <Progress value={Math.min(pctUsed, 100)} className="h-1 mt-1.5" />
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Variance</p>
+            {budgetQ.isLoading ? (
+              <Skeleton className="h-6 w-24" />
+            ) : (
+              <div className="flex items-center gap-1">
+                {variance >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-600" />
+                )}
+                <p
+                  className={`text-xl font-semibold ${variance >= 0 ? "text-green-600" : "text-red-600"}`}
+                >
+                  {fmtMoney(Math.abs(variance))}
+                </p>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {variance >= 0 ? "Under budget" : "Over budget"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+              Outstanding AR
+            </p>
+            {invoicesQ.isLoading ? (
+              <Skeleton className="h-6 w-24" />
+            ) : (
+              <p
+                className={`text-xl font-semibold ${budget && budget.outstanding > 0 ? "text-amber-600" : ""}`}
+              >
+                {fmtMoney(budget?.outstanding ?? 0)}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Labor cost note */}
+      {budget && budget.labor_cost > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Labor cost from approved timesheets: {fmtMoney(budget.labor_cost)} · Approved expenses:{" "}
+          {fmtMoney(budget.actual_expenses)}
+        </p>
+      )}
+
+      {/* Recent expenses */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Recent Expenses</CardTitle>
+            <Link
+              to="/financials"
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              All financials <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {expensesQ.isLoading ? (
+            <div className="p-3 space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-4 w-full" />
+              ))}
+            </div>
+          ) : expenses.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+              <Receipt className="h-8 w-8 opacity-30" />
+              No expenses recorded.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  {["Date", "Category", "Description", "Amount", "Status"].map((h) => (
+                    <TableHead key={h} className="px-3 text-xs font-medium">
+                      {h}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {expenses.map((exp) => (
+                  <TableRow key={exp.id}>
+                    <TableCell className="px-3 text-xs whitespace-nowrap">
+                      {exp.expense_date}
+                    </TableCell>
+                    <TableCell className="px-3">
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {exp.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-3 text-xs max-w-[180px] truncate">
+                      {exp.description}
+                    </TableCell>
+                    <TableCell className="px-3 text-xs font-medium">
+                      {fmtMoney(exp.amount)}
+                    </TableCell>
+                    <TableCell className="px-3">
+                      <Badge
+                        variant="outline"
+                        className={`${EXP_STATUS[exp.status]} text-xs capitalize`}
+                      >
+                        {exp.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent invoices */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Invoices</CardTitle>
+            <Link
+              to="/financials"
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              All invoices <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {invoicesQ.isLoading ? (
+            <div className="p-3 space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-4 w-full" />
+              ))}
+            </div>
+          ) : invoices.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+              <Banknote className="h-8 w-8 opacity-30" />
+              No invoices yet.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  {["Invoice #", "Title", "Total", "Paid", "Status"].map((h) => (
+                    <TableHead key={h} className="px-3 text-xs font-medium">
+                      {h}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="px-3 text-xs font-mono">{inv.invoice_number}</TableCell>
+                    <TableCell className="px-3 text-xs max-w-[180px] truncate">
+                      {inv.title}
+                    </TableCell>
+                    <TableCell className="px-3 text-xs font-medium">
+                      {fmtMoney(inv.total_amount)}
+                    </TableCell>
+                    <TableCell className="px-3 text-xs text-green-600">
+                      {inv.paid_amount > 0 ? fmtMoney(inv.paid_amount) : "—"}
+                    </TableCell>
+                    <TableCell className="px-3">
+                      <Badge
+                        variant="outline"
+                        className={`${inv.is_overdue ? INV_STATUS.overdue : INV_STATUS[inv.status]} text-xs capitalize`}
+                      >
+                        {inv.is_overdue ? "overdue" : inv.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

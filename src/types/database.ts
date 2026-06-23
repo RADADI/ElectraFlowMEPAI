@@ -735,6 +735,145 @@ export interface Holiday {
   deleted_at: string | null;
 }
 
+// ─── Phase 12: Financials ─────────────────────────────────────────────────────
+
+export type ExpenseCategory =
+  | "labor"
+  | "material"
+  | "equipment"
+  | "subcontractor"
+  | "software"
+  | "travel"
+  | "other";
+
+export type ExpenseStatus = "pending" | "approved" | "rejected";
+export type ChangeOrderStatus = "draft" | "submitted" | "approved" | "rejected" | "voided";
+export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "voided";
+export type PaymentMethod = "bank_transfer" | "check" | "cash" | "credit_card" | "other";
+
+export interface ProjectBudget {
+  id: string;
+  project_id: string;
+  organization_id: string;
+  total_budget: number;
+  approved_changes: number;
+  contingency_percent: number;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type ProjectBudgetInsert = Omit<ProjectBudget, "id" | "created_at" | "updated_at">;
+export type ProjectBudgetUpdate = Partial<ProjectBudgetInsert>;
+
+export interface Expense {
+  id: string;
+  project_id: string;
+  organization_id: string;
+  category: ExpenseCategory;
+  description: string;
+  amount: number;
+  expense_date: string;
+  vendor: string | null;
+  reference_number: string | null;
+  billable: boolean;
+  status: ExpenseStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type ExpenseInsert = Omit<Expense, "id" | "created_at" | "updated_at">;
+export type ExpenseUpdate = Partial<ExpenseInsert>;
+
+export interface ChangeOrder {
+  id: string;
+  project_id: string;
+  organization_id: string;
+  co_number: string;
+  title: string;
+  description: string | null;
+  amount: number;
+  status: ChangeOrderStatus;
+  submitted_by: string | null;
+  submitted_at: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  rejection_reason: string | null;
+  void_reason: string | null;
+  revision_number: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type ChangeOrderInsert = Omit<ChangeOrder, "id" | "created_at" | "updated_at">;
+export type ChangeOrderUpdate = Partial<ChangeOrderInsert>;
+
+export interface Invoice {
+  id: string;
+  project_id: string;
+  organization_id: string;
+  invoice_number: string;
+  title: string;
+  client_name: string | null;
+  status: InvoiceStatus;
+  issue_date: string;
+  due_date: string;
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
+  total_amount: number;
+  paid_amount: number;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type InvoiceInsert = Omit<Invoice, "id" | "created_at" | "updated_at">;
+export type InvoiceUpdate = Partial<InvoiceInsert>;
+
+export interface InvoiceItem {
+  id: string;
+  invoice_id: string;
+  organization_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type InvoiceItemInsert = Omit<InvoiceItem, "id" | "created_at" | "updated_at">;
+
+export interface Payment {
+  id: string;
+  invoice_id: string;
+  project_id: string;
+  organization_id: string;
+  amount: number;
+  payment_date: string;
+  method: PaymentMethod;
+  reference_number: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PaymentInsert = Omit<Payment, "id" | "created_at" | "updated_at">;
+
 // ─── Supabase Database interface ──────────────────────────────────────────────
 // This is the generic type parameter for createClient<Database>().
 // Each table maps to its Row / Insert / Update tuple.
@@ -896,6 +1035,36 @@ export interface Database {
         Row: Holiday;
         Insert: Omit<Holiday, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<Holiday, "id" | "created_at">>;
+      };
+      project_budgets: {
+        Row: ProjectBudget;
+        Insert: ProjectBudgetInsert;
+        Update: ProjectBudgetUpdate;
+      };
+      expenses: {
+        Row: Expense;
+        Insert: ExpenseInsert;
+        Update: ExpenseUpdate;
+      };
+      change_orders: {
+        Row: ChangeOrder;
+        Insert: ChangeOrderInsert;
+        Update: ChangeOrderUpdate;
+      };
+      invoices: {
+        Row: Invoice;
+        Insert: InvoiceInsert;
+        Update: InvoiceUpdate;
+      };
+      invoice_items: {
+        Row: InvoiceItem;
+        Insert: InvoiceItemInsert;
+        Update: Partial<InvoiceItemInsert>;
+      };
+      payments: {
+        Row: Payment;
+        Insert: PaymentInsert;
+        Update: Partial<PaymentInsert>;
       };
     };
     Views: Record<string, never>;
