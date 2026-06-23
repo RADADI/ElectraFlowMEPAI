@@ -90,6 +90,17 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
   "/settings": ["Admin"],
   /** Phase 6: user management — Admin only. */
   "/users": ["Admin"],
+  /** Phase 12.5: Profile — all authenticated users */
+  "/profile": [
+    "Admin",
+    "Project Manager",
+    "Senior Electrical Engineer",
+    "Electrical Engineer",
+    "QA/QC Engineer",
+    "HR",
+    "Executive",
+    "Client",
+  ],
   /** Phase 11: Timesheets — all staff except Client */
   "/timesheets": [
     "Admin",

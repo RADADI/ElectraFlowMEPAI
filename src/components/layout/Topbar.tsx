@@ -117,7 +117,7 @@ export function Topbar() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => toast.info("Profile page coming in Phase 3")}>
+          <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
             <User className="h-4 w-4 mr-2" />
             My Profile
           </DropdownMenuItem>

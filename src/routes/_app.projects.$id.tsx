@@ -515,7 +515,7 @@ function ProjectDetailPage() {
                     Estimated Cost
                   </div>
                   <div className="text-xl font-semibold text-muted-foreground">—</div>
-                  <div className="text-xs text-muted-foreground mt-1">Coming in Phase 5</div>
+                  <div className="text-xs text-muted-foreground mt-1">Not configured yet</div>
                 </CardContent>
               </Card>
               <Card>
@@ -524,7 +524,7 @@ function ProjectDetailPage() {
                     Actual Cost
                   </div>
                   <div className="text-xl font-semibold text-muted-foreground">—</div>
-                  <div className="text-xs text-muted-foreground mt-1">Coming in Phase 5</div>
+                  <div className="text-xs text-muted-foreground mt-1">Not configured yet</div>
                 </CardContent>
               </Card>
             </div>

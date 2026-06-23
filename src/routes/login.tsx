@@ -315,7 +315,7 @@ function MockLoginForm() {
             <Label htmlFor="login-pwd">Password</Label>
             <button
               type="button"
-              onClick={() => toast.info("Password reset coming in Phase 3")}
+              onClick={() => toast.info("Contact your administrator to reset your password.")}
               className="text-xs text-primary hover:underline"
             >
               Forgot password?
@@ -442,7 +442,7 @@ function ClerkLoginForm() {
             <Label htmlFor="clerk-pwd">Password</Label>
             <button
               type="button"
-              onClick={() => toast.info("Password reset coming in Phase 3")}
+              onClick={() => toast.info("Contact your administrator to reset your password.")}
               className="text-xs text-primary hover:underline"
             >
               Forgot password?

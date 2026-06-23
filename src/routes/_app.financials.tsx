@@ -1,36 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader, StatCard } from "@/components/layout/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { revenueTrend, cashFlow, stats } from "@/lib/dummy-data";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useProjects } from "@/hooks/api/useProjects";
 import {
   DollarSign,
   Receipt,
   Banknote,
-  ClockAlert,
   ShieldCheck,
-  Users,
-  Briefcase,
-  Plane,
-  Hammer,
   TrendingUp,
-  TrendingDown,
-  ArrowRightLeft,
+  RefreshCw,
+  FolderKanban,
+  AlertTriangle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/financials")({
@@ -38,174 +30,178 @@ export const Route = createFileRoute("/_app/financials")({
   component: Financials,
 });
 
-const horizons = ["3 months", "6 months", "12 months", "24 months"];
+function formatMoney(value: number | null | undefined) {
+  if (value == null) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  planning: "bg-blue-50 text-blue-700",
+  active: "bg-green-50 text-green-700",
+  on_hold: "bg-yellow-50 text-yellow-700",
+  completed: "bg-slate-50 text-slate-700",
+  cancelled: "bg-red-50 text-red-700",
+};
 
 function Financials() {
-  const [h, setH] = useState("12 months");
+  const projectsQuery = useProjects();
+  const projects = projectsQuery.data ?? [];
+
+  const loading = projectsQuery.isLoading;
+  const hasError = projectsQuery.isError;
+
+  // Derived project-level financial totals (real data)
+  const totalBudget = projects.reduce((s, p) => s + (p.budget ?? 0), 0);
+  const activeCount = projects.filter((p) => p.status === "active").length;
+  const onHoldCount = projects.filter((p) => p.status === "on_hold").length;
+
+  // Loading skeleton
+  if (loading) {
+    return (
+      <>
+        <PageHeader title="Financial Dashboard" subtitle="Budget, billing and cost overview." />
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-lg border bg-card p-4 space-y-3">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-7 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          ))}
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  // Error state
+  if (hasError) {
+    return (
+      <>
+        <PageHeader title="Financial Dashboard" subtitle="Budget, billing and cost overview." />
+        <Alert variant="destructive" className="max-w-lg">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load project data. Check your connection and try again.
+          </AlertDescription>
+        </Alert>
+        <Button variant="outline" className="mt-3" onClick={() => projectsQuery.refetch()}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Retry
+        </Button>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
         title="Financial Dashboard"
-        subtitle="Revenue, billing, cost and forecast for the company."
-        actions={<Button variant="outline">Export to Excel</Button>}
+        subtitle="Budget, billing and cost overview."
+        actions={
+          <Button variant="outline" size="sm" disabled>
+            Export — not configured yet
+          </Button>
+        }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-3">
+      {/* Stat cards — project budgets are real; billing/AR requires financial module */}
+      <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
         <StatCard
-          label="Total Revenue"
-          value={`$${stats.revenue}M`}
+          label="Total Projects"
+          value={projects.length}
+          hint={`${activeCount} active, ${onHoldCount} on hold`}
+          icon={FolderKanban}
+        />
+        <StatCard
+          label="Combined Budget"
+          value={formatMoney(totalBudget)}
+          hint="Sum of all project budgets"
           icon={DollarSign}
-          intent="success"
-          trend="+18%"
+          intent="info"
         />
-        <StatCard label="Billed" value={`$${stats.billed}M`} icon={Receipt} intent="info" />
-        <StatCard
-          label="Collected"
-          value={`$${stats.collected}M`}
-          icon={Banknote}
-          intent="success"
-        />
-        <StatCard
-          label="Outstanding"
-          value={`$${stats.outstanding}M`}
-          icon={ClockAlert}
-          intent="warning"
-        />
-        <StatCard label="Retention" value={`$${stats.retention}M`} icon={ShieldCheck} />
-        <StatCard label="Cash Flow" value={`$${stats.cash}M`} icon={ArrowRightLeft} intent="info" />
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
-        <StatCard label="Labor Cost" value="$11.2M" icon={Users} />
-        <StatCard label="Software" value="$0.9M" icon={Briefcase} />
-        <StatCard label="Travel" value="$0.6M" icon={Plane} />
-        <StatCard label="Subcontractors" value="$5.4M" icon={Hammer} />
-        <StatCard label="Profit" value="$7.0M" icon={TrendingUp} intent="success" />
-        <StatCard label="Loss" value="$0.3M" icon={TrendingDown} intent="destructive" />
+        <StatCard label="Billed / Invoiced" value="—" hint="Not configured yet" icon={Receipt} />
+        <StatCard label="Collected" value="—" hint="Not configured yet" icon={Banknote} />
+        <StatCard label="Outstanding AR" value="—" hint="Not configured yet" icon={ShieldCheck} />
+        <StatCard label="Profit Margin" value="—" hint="Not configured yet" icon={TrendingUp} />
       </div>
 
-      <Card className="mb-4">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Forecast Horizon</CardTitle>
-          <div className="flex gap-1 p-1 bg-muted rounded-md">
-            {horizons.map((x) => (
-              <button
-                key={x}
-                onClick={() => setH(x)}
-                className={`px-3 py-1 text-xs rounded ${h === x ? "bg-card shadow-sm font-medium" : "text-muted-foreground"}`}
-              >
-                {x}
-              </button>
-            ))}
-          </div>
+      {/* Forecasting notice */}
+      <Alert className="mb-6 border-blue-200 bg-blue-50">
+        <AlertDescription className="text-blue-700 text-sm">
+          Revenue forecasting, cash flow charts, and expense tracking require the financial module
+          to be configured. Only project-level budget data is available now.
+        </AlertDescription>
+      </Alert>
+
+      {/* Project budget table — live from Supabase */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Project Budgets</CardTitle>
+          <CardDescription>
+            Live from the Projects module. Budget vs. cost data available once the financial module
+            is configured.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={revenueTrend}>
-              <defs>
-                <linearGradient id="rfc" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-chart-1)" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="var(--color-chart-1)" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="pfc" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-chart-2)" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="var(--color-chart-2)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis dataKey="m" stroke="var(--color-muted-foreground)" fontSize={12} />
-              <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  background: "var(--color-card)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: 8,
-                }}
-              />
-              <Legend />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="var(--color-chart-1)"
-                fill="url(#rfc)"
-                name="Revenue Forecast"
-              />
-              <Area
-                type="monotone"
-                dataKey="profit"
-                stroke="var(--color-chart-2)"
-                fill="url(#pfc)"
-                name="Profit Forecast"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <CardContent className="p-0">
+          {projects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+              <FolderKanban className="h-10 w-10 opacity-30" />
+              <p className="text-sm">No projects found.</p>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/projects">Go to Projects</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    {["Project", "Client", "Status", "Budget", "Actual Cost", "Margin"].map((h) => (
+                      <TableHead key={h} className="px-4 font-medium whitespace-nowrap">
+                        {h}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {projects.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="px-4">
+                        <Link
+                          to="/projects/$id"
+                          params={{ id: p.id }}
+                          className="font-medium hover:underline"
+                        >
+                          {p.name}
+                        </Link>
+                        <div className="text-xs text-muted-foreground">{p.project_number}</div>
+                      </TableCell>
+                      <TableCell className="px-4 text-sm">{p.client_name ?? "—"}</TableCell>
+                      <TableCell className="px-4">
+                        <Badge variant="outline" className={STATUS_COLORS[p.status] ?? ""}>
+                          {p.status.replace("_", " ")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 font-medium">{formatMoney(p.budget)}</TableCell>
+                      <TableCell className="px-4 text-muted-foreground text-sm">—</TableCell>
+                      <TableCell className="px-4 text-muted-foreground text-sm">—</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Expense Forecast</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={revenueTrend.map((r) => ({
-                  m: r.m,
-                  expense: +(r.revenue - r.profit).toFixed(2),
-                }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="m" stroke="var(--color-muted-foreground)" fontSize={12} />
-                <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 8,
-                  }}
-                />
-                <Bar dataKey="expense" fill="var(--color-chart-5)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Cash Flow Forecast</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={cashFlow}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="m" stroke="var(--color-muted-foreground)" fontSize={12} />
-                <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 8,
-                  }}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="inflow"
-                  stroke="var(--color-chart-2)"
-                  strokeWidth={2}
-                  name="Inflow"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="outflow"
-                  stroke="var(--color-chart-5)"
-                  strokeWidth={2}
-                  name="Outflow"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
     </>
   );
 }
