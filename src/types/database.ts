@@ -655,6 +655,86 @@ export interface ResourceAllocation {
 
 export type ResourceAllocationInsert = Omit<ResourceAllocation, "id" | "created_at" | "updated_at">;
 
+// ─── Phase 11: Timesheets & Leave ─────────────────────────────────────────────
+
+export type TimesheetStatus = "draft" | "submitted" | "approved" | "rejected" | "archived";
+export type TimesheetWorkType = "regular" | "overtime" | "travel" | "training" | "admin";
+export type LeaveType = "pto" | "sick" | "unpaid" | "holiday" | "bereavement" | "other";
+export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+export interface Timesheet {
+  id: string;
+  organization_id: string;
+  employee_id: string;
+  week_start_date: string;
+  week_end_date: string;
+  status: TimesheetStatus;
+  total_hours: number;
+  regular_hours: number;
+  overtime_hours: number;
+  submitted_at: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejected_by: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+  unlock_reason: string | null;
+  revision_number: number;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+  deleted_at: string | null;
+}
+
+export interface TimesheetEntry {
+  id: string;
+  organization_id: string;
+  timesheet_id: string;
+  project_id: string;
+  entry_date: string;
+  hours: number;
+  work_type: TimesheetWorkType;
+  description: string | null;
+  billable: boolean;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface LeaveRequest {
+  id: string;
+  organization_id: string;
+  employee_id: string;
+  leave_type: LeaveType;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  reason: string | null;
+  status: LeaveStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejected_by: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  deleted_at: string | null;
+}
+
+export interface Holiday {
+  id: string;
+  organization_id: string;
+  name: string;
+  holiday_date: string;
+  recurring: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  deleted_at: string | null;
+}
+
 // ─── Supabase Database interface ──────────────────────────────────────────────
 // This is the generic type parameter for createClient<Database>().
 // Each table maps to its Row / Insert / Update tuple.
@@ -796,6 +876,26 @@ export interface Database {
         Row: ResourceAllocation;
         Insert: ResourceAllocationInsert;
         Update: Partial<ResourceAllocationInsert>;
+      };
+      timesheets: {
+        Row: Timesheet;
+        Insert: Omit<Timesheet, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Timesheet, "id" | "created_at">>;
+      };
+      timesheet_entries: {
+        Row: TimesheetEntry;
+        Insert: Omit<TimesheetEntry, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<TimesheetEntry, "id" | "created_at">>;
+      };
+      leave_requests: {
+        Row: LeaveRequest;
+        Insert: Omit<LeaveRequest, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<LeaveRequest, "id" | "created_at">>;
+      };
+      holidays: {
+        Row: Holiday;
+        Insert: Omit<Holiday, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Holiday, "id" | "created_at">>;
       };
     };
     Views: Record<string, never>;

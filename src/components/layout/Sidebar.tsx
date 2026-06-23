@@ -19,6 +19,8 @@ import {
   UserSquare2,
   Settings,
   Zap,
+  Clock,
+  CalendarOff,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { canAccess } from "@/lib/permissions";
@@ -33,6 +35,8 @@ export const navItems = [
   { to: "/financials", label: "Financials", icon: Wallet },
   { to: "/resources", label: "Resources", icon: Users },
   { to: "/workload", label: "Workload", icon: CalendarClock },
+  { to: "/timesheets", label: "Timesheets", icon: Clock },
+  { to: "/leave", label: "Leave", icon: CalendarOff },
   { to: "/hr", label: "HR", icon: UserCog },
   { to: "/executive", label: "Executive", icon: Briefcase },
   { to: "/ai", label: "AI Assistant", icon: Sparkles },

@@ -18,6 +18,7 @@ import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as AppWorkloadRouteImport } from './routes/_app.workload'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
+import { Route as AppTimesheetsRouteImport } from './routes/_app.timesheets'
 import { Route as AppSubmittalsRouteImport } from './routes/_app.submittals'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRfiRouteImport } from './routes/_app.rfi'
@@ -27,6 +28,7 @@ import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppPmRouteImport } from './routes/_app.pm'
 import { Route as AppNcrRouteImport } from './routes/_app.ncr'
 import { Route as AppMeetingsRouteImport } from './routes/_app.meetings'
+import { Route as AppLeaveRouteImport } from './routes/_app.leave'
 import { Route as AppHrRouteImport } from './routes/_app.hr'
 import { Route as AppFinancialsRouteImport } from './routes/_app.financials'
 import { Route as AppExecutiveRouteImport } from './routes/_app.executive'
@@ -34,6 +36,7 @@ import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppClientPortalRouteImport } from './routes/_app.client-portal'
 import { Route as AppAppsRouteImport } from './routes/_app.apps'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
+import { Route as AppTimesheetsIdRouteImport } from './routes/_app.timesheets.$id'
 import { Route as AppSubmittalsIdRouteImport } from './routes/_app.submittals.$id'
 import { Route as AppRfiIdRouteImport } from './routes/_app.rfi.$id'
 import { Route as AppResourcesIdRouteImport } from './routes/_app.resources.$id'
@@ -84,6 +87,11 @@ const AppUsersRoute = AppUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTimesheetsRoute = AppTimesheetsRouteImport.update({
+  id: '/timesheets',
+  path: '/timesheets',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSubmittalsRoute = AppSubmittalsRouteImport.update({
   id: '/submittals',
   path: '/submittals',
@@ -129,6 +137,11 @@ const AppMeetingsRoute = AppMeetingsRouteImport.update({
   path: '/meetings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLeaveRoute = AppLeaveRouteImport.update({
+  id: '/leave',
+  path: '/leave',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppHrRoute = AppHrRouteImport.update({
   id: '/hr',
   path: '/hr',
@@ -163,6 +176,11 @@ const AppAiRoute = AppAiRouteImport.update({
   id: '/ai',
   path: '/ai',
   getParentRoute: () => AppRoute,
+} as any)
+const AppTimesheetsIdRoute = AppTimesheetsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppTimesheetsRoute,
 } as any)
 const AppSubmittalsIdRoute = AppSubmittalsIdRouteImport.update({
   id: '/$id',
@@ -203,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/executive': typeof AppExecutiveRoute
   '/financials': typeof AppFinancialsRoute
   '/hr': typeof AppHrRoute
+  '/leave': typeof AppLeaveRoute
   '/meetings': typeof AppMeetingsRoute
   '/ncr': typeof AppNcrRoute
   '/pm': typeof AppPmRoute
@@ -212,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/rfi': typeof AppRfiRouteWithChildren
   '/settings': typeof AppSettingsRoute
   '/submittals': typeof AppSubmittalsRouteWithChildren
+  '/timesheets': typeof AppTimesheetsRouteWithChildren
   '/users': typeof AppUsersRoute
   '/workload': typeof AppWorkloadRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -220,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/resources/$id': typeof AppResourcesIdRoute
   '/rfi/$id': typeof AppRfiIdRoute
   '/submittals/$id': typeof AppSubmittalsIdRoute
+  '/timesheets/$id': typeof AppTimesheetsIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -233,6 +254,7 @@ export interface FileRoutesByTo {
   '/executive': typeof AppExecutiveRoute
   '/financials': typeof AppFinancialsRoute
   '/hr': typeof AppHrRoute
+  '/leave': typeof AppLeaveRoute
   '/meetings': typeof AppMeetingsRoute
   '/ncr': typeof AppNcrRoute
   '/pm': typeof AppPmRoute
@@ -242,6 +264,7 @@ export interface FileRoutesByTo {
   '/rfi': typeof AppRfiRouteWithChildren
   '/settings': typeof AppSettingsRoute
   '/submittals': typeof AppSubmittalsRouteWithChildren
+  '/timesheets': typeof AppTimesheetsRouteWithChildren
   '/users': typeof AppUsersRoute
   '/workload': typeof AppWorkloadRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -251,6 +274,7 @@ export interface FileRoutesByTo {
   '/resources/$id': typeof AppResourcesIdRoute
   '/rfi/$id': typeof AppRfiIdRoute
   '/submittals/$id': typeof AppSubmittalsIdRoute
+  '/timesheets/$id': typeof AppTimesheetsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -266,6 +290,7 @@ export interface FileRoutesById {
   '/_app/executive': typeof AppExecutiveRoute
   '/_app/financials': typeof AppFinancialsRoute
   '/_app/hr': typeof AppHrRoute
+  '/_app/leave': typeof AppLeaveRoute
   '/_app/meetings': typeof AppMeetingsRoute
   '/_app/ncr': typeof AppNcrRoute
   '/_app/pm': typeof AppPmRoute
@@ -275,6 +300,7 @@ export interface FileRoutesById {
   '/_app/rfi': typeof AppRfiRouteWithChildren
   '/_app/settings': typeof AppSettingsRoute
   '/_app/submittals': typeof AppSubmittalsRouteWithChildren
+  '/_app/timesheets': typeof AppTimesheetsRouteWithChildren
   '/_app/users': typeof AppUsersRoute
   '/_app/workload': typeof AppWorkloadRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -284,6 +310,7 @@ export interface FileRoutesById {
   '/_app/resources/$id': typeof AppResourcesIdRoute
   '/_app/rfi/$id': typeof AppRfiIdRoute
   '/_app/submittals/$id': typeof AppSubmittalsIdRoute
+  '/_app/timesheets/$id': typeof AppTimesheetsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -300,6 +327,7 @@ export interface FileRouteTypes {
     | '/executive'
     | '/financials'
     | '/hr'
+    | '/leave'
     | '/meetings'
     | '/ncr'
     | '/pm'
@@ -309,6 +337,7 @@ export interface FileRouteTypes {
     | '/rfi'
     | '/settings'
     | '/submittals'
+    | '/timesheets'
     | '/users'
     | '/workload'
     | '/invite/$token'
@@ -317,6 +346,7 @@ export interface FileRouteTypes {
     | '/resources/$id'
     | '/rfi/$id'
     | '/submittals/$id'
+    | '/timesheets/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -330,6 +360,7 @@ export interface FileRouteTypes {
     | '/executive'
     | '/financials'
     | '/hr'
+    | '/leave'
     | '/meetings'
     | '/ncr'
     | '/pm'
@@ -339,6 +370,7 @@ export interface FileRouteTypes {
     | '/rfi'
     | '/settings'
     | '/submittals'
+    | '/timesheets'
     | '/users'
     | '/workload'
     | '/invite/$token'
@@ -348,6 +380,7 @@ export interface FileRouteTypes {
     | '/resources/$id'
     | '/rfi/$id'
     | '/submittals/$id'
+    | '/timesheets/$id'
   id:
     | '__root__'
     | '/_app'
@@ -362,6 +395,7 @@ export interface FileRouteTypes {
     | '/_app/executive'
     | '/_app/financials'
     | '/_app/hr'
+    | '/_app/leave'
     | '/_app/meetings'
     | '/_app/ncr'
     | '/_app/pm'
@@ -371,6 +405,7 @@ export interface FileRouteTypes {
     | '/_app/rfi'
     | '/_app/settings'
     | '/_app/submittals'
+    | '/_app/timesheets'
     | '/_app/users'
     | '/_app/workload'
     | '/invite/$token'
@@ -380,6 +415,7 @@ export interface FileRouteTypes {
     | '/_app/resources/$id'
     | '/_app/rfi/$id'
     | '/_app/submittals/$id'
+    | '/_app/timesheets/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -456,6 +492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUsersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/timesheets': {
+      id: '/_app/timesheets'
+      path: '/timesheets'
+      fullPath: '/timesheets'
+      preLoaderRoute: typeof AppTimesheetsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/submittals': {
       id: '/_app/submittals'
       path: '/submittals'
@@ -519,6 +562,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMeetingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/leave': {
+      id: '/_app/leave'
+      path: '/leave'
+      fullPath: '/leave'
+      preLoaderRoute: typeof AppLeaveRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/hr': {
       id: '/_app/hr'
       path: '/hr'
@@ -567,6 +617,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/ai'
       preLoaderRoute: typeof AppAiRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/timesheets/$id': {
+      id: '/_app/timesheets/$id'
+      path: '/$id'
+      fullPath: '/timesheets/$id'
+      preLoaderRoute: typeof AppTimesheetsIdRouteImport
+      parentRoute: typeof AppTimesheetsRoute
     }
     '/_app/submittals/$id': {
       id: '/_app/submittals/$id'
@@ -665,6 +722,18 @@ const AppSubmittalsRouteWithChildren = AppSubmittalsRoute._addFileChildren(
   AppSubmittalsRouteChildren,
 )
 
+interface AppTimesheetsRouteChildren {
+  AppTimesheetsIdRoute: typeof AppTimesheetsIdRoute
+}
+
+const AppTimesheetsRouteChildren: AppTimesheetsRouteChildren = {
+  AppTimesheetsIdRoute: AppTimesheetsIdRoute,
+}
+
+const AppTimesheetsRouteWithChildren = AppTimesheetsRoute._addFileChildren(
+  AppTimesheetsRouteChildren,
+)
+
 interface AppRouteChildren {
   AppAiRoute: typeof AppAiRoute
   AppAppsRoute: typeof AppAppsRoute
@@ -673,6 +742,7 @@ interface AppRouteChildren {
   AppExecutiveRoute: typeof AppExecutiveRoute
   AppFinancialsRoute: typeof AppFinancialsRoute
   AppHrRoute: typeof AppHrRoute
+  AppLeaveRoute: typeof AppLeaveRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
   AppNcrRoute: typeof AppNcrRoute
   AppPmRoute: typeof AppPmRoute
@@ -682,6 +752,7 @@ interface AppRouteChildren {
   AppRfiRoute: typeof AppRfiRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRoute
   AppSubmittalsRoute: typeof AppSubmittalsRouteWithChildren
+  AppTimesheetsRoute: typeof AppTimesheetsRouteWithChildren
   AppUsersRoute: typeof AppUsersRoute
   AppWorkloadRoute: typeof AppWorkloadRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -695,6 +766,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppExecutiveRoute: AppExecutiveRoute,
   AppFinancialsRoute: AppFinancialsRoute,
   AppHrRoute: AppHrRoute,
+  AppLeaveRoute: AppLeaveRoute,
   AppMeetingsRoute: AppMeetingsRoute,
   AppNcrRoute: AppNcrRoute,
   AppPmRoute: AppPmRoute,
@@ -704,6 +776,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRfiRoute: AppRfiRouteWithChildren,
   AppSettingsRoute: AppSettingsRoute,
   AppSubmittalsRoute: AppSubmittalsRouteWithChildren,
+  AppTimesheetsRoute: AppTimesheetsRouteWithChildren,
   AppUsersRoute: AppUsersRoute,
   AppWorkloadRoute: AppWorkloadRoute,
   AppIndexRoute: AppIndexRoute,
