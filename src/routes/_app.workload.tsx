@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { workloadByMonth } from "@/lib/dummy-data";
 import {
   ComposedChart,
   Bar,
@@ -15,23 +14,28 @@ import {
   Legend,
 } from "recharts";
 import { AlertTriangle } from "lucide-react";
+import { useWorkloadSummary } from "@/hooks/api/useEmployees";
 
 export const Route = createFileRoute("/_app/workload")({
   head: () => ({ meta: [{ title: "Workload Projection — ElectraFlow AI" }] }),
   component: Workload,
 });
 
-const data = workloadByMonth.map((d) => ({
-  ...d,
-  util: Math.round((d.required / d.available) * 100),
-}));
-
 function Workload() {
+  const workloadQuery = useWorkloadSummary();
+  const rawData = workloadQuery.data ?? [];
+  const data = rawData.map((d) => ({
+    m: d.month,
+    required: d.required_hours,
+    available: d.available_hours,
+    util: d.utilization_pct,
+  }));
+
   return (
     <>
       <PageHeader
         title="Workload Projection"
-        subtitle="Forecast resource demand vs availability for the next 10 months."
+        subtitle="Forecast resource demand vs availability for the next 6 months."
       />
 
       <Card className="mb-4">

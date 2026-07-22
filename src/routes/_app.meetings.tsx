@@ -1,146 +1,280 @@
-import { createFileRoute } from "@tanstack/react-router";
+/**
+ * Meetings List — Phase 15A
+ */
+
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { meetings } from "@/lib/dummy-data";
-import { Plus, FileDown, Users, ClipboardList } from "lucide-react";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { MeetingFormModal } from "@/components/meetings/MeetingFormModal";
+import { useMeetings, useCreateMeeting } from "@/hooks/api/useMeetings";
+import { MEETING_STATUS_LABEL, MEETING_STATUS_CLASS } from "@/types/meeting-view";
+import type {
+  MeetingFilterInput,
+  MeetingCreateInput,
+  MeetingUpdateInput,
+} from "@/types/meeting-view";
+import type { MeetingStatus } from "@/types/database";
+import { projects } from "@/lib/dummy-data";
+import { formatDateTime } from "@/lib/format";
+import { useAuth } from "@/contexts/auth-context";
+import {
+  Plus,
+  Search,
+  Calendar,
+  ClipboardList,
+  Users,
+  AlertTriangle,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/meetings")({
-  head: () => ({ meta: [{ title: "Meeting Minutes — ElectraFlow AI" }] }),
+  head: () => ({ meta: [{ title: "Meetings — ElectraFlow AI" }] }),
   component: MeetingsPage,
 });
 
 function MeetingsPage() {
+  const { role } = useAuth();
+  const canCreate =
+    role === "Admin" || role === "Project Manager" || role === "Senior Electrical Engineer";
+
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<MeetingStatus | "all">("all");
+  const [projectId, setProjectId] = useState<string>("all");
+  const [mineOnly, setMineOnly] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const filters: MeetingFilterInput = useMemo(
+    () => ({
+      search: search.trim() || undefined,
+      status,
+      project_id: projectId === "all" ? undefined : projectId,
+      mine_only: mineOnly || undefined,
+    }),
+    [search, status, projectId, mineOnly],
+  );
+
+  const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useMeetings(filters);
+
+  const createMut = useCreateMeeting();
+
+  const items = useMemo(() => data?.pages.flatMap((p) => p.data?.items ?? []) ?? [], [data]);
+
+  const isMock = data?.pages[0]?.isMockData ?? false;
+
+  async function handleCreate(input: MeetingCreateInput | MeetingUpdateInput) {
+    const res = await createMut.mutateAsync(input as MeetingCreateInput);
+    if (res.error) {
+      toast.error(res.error.message);
+      return;
+    }
+    toast.success("Meeting created");
+    setCreateOpen(false);
+  }
+
   return (
     <>
       <PageHeader
-        title="Meeting Minutes"
-        subtitle="Agendas, notes, and action items."
+        title="Meetings"
+        subtitle="Agendas, minutes, attendees, and action items."
         actions={
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                New Meeting
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Schedule meeting</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3 py-2">
-                <div className="space-y-1.5">
-                  <Label>Title</Label>
-                  <Input placeholder="Weekly coordination…" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Date</Label>
-                    <Input type="date" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Time</Label>
-                    <Input type="time" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Agenda</Label>
-                  <Textarea rows={3} placeholder="One item per line…" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={() => toast.success("Meeting created")}>Create</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          canCreate ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Meeting
+            </Button>
+          ) : undefined
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        {meetings.map((m) => (
-          <Card key={m.id}>
-            <CardHeader>
-              <CardTitle className="text-base">{m.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-3 text-xs">
-                <Badge variant="outline">{m.date}</Badge>
-                <span className="inline-flex items-center gap-1">
-                  <Users className="h-3.5 w-3.5" />
-                  {m.attendees}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <ClipboardList className="h-3.5 w-3.5" />
-                  {m.actions} actions
-                </span>
-              </div>
-              <Button variant="outline" size="sm" className="w-full">
-                <FileDown className="h-4 w-4 mr-2" />
-                Export PDF
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {isMock && (
+        <p className="text-xs text-muted-foreground mb-3">Demo mode — showing mock meeting data.</p>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{meetings[0].title} · Notes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div>
-            <div className="font-semibold mb-1">Agenda</div>
-            <ul className="list-disc pl-5 text-muted-foreground space-y-0.5">
-              <li>Submittals status</li>
-              <li>Schedule recovery for SS-01</li>
-              <li>Open RFIs review</li>
-              <li>NCR-003 closeout</li>
-            </ul>
-          </div>
-          <div>
-            <div className="font-semibold mb-1">Discussion notes</div>
-            <p className="text-muted-foreground">
-              Reviewed AHU-12 corrective submittal; consultant agrees on revised motor model. ALEC
-              committed to 7-day re-submission turnaround. Coordination required between Electrical
-              and HVAC for tray-duct clash zone B.
-            </p>
-          </div>
-          <div>
-            <div className="font-semibold mb-2">Action items</div>
-            <div className="space-y-1.5">
-              {[
-                { a: "Issue RFI-006 on Zone B tray routing", who: "Sara Khan", due: "2025-07-02" },
-                { a: "Re-issue AHU-12 submittal package", who: "ALEC / Omar", due: "2025-07-05" },
-                {
-                  a: "Confirm closeout of NCR-003 with QA/QC",
-                  who: "Mohammed Iqbal",
-                  due: "2025-07-04",
-                },
-              ].map((x, i) => (
-                <div key={i} className="flex items-center gap-3 p-2 rounded-md border">
-                  <input type="checkbox" className="h-4 w-4" />
-                  <span className="flex-1">{x.a}</span>
-                  <Badge variant="outline">{x.who}</Badge>
-                  <Badge variant="outline">{x.due}</Badge>
-                </div>
-              ))}
+      <Card className="mb-4">
+        <CardContent className="pt-4">
+          <div className="flex flex-col lg:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Search meetings…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
+            <Select value={status} onValueChange={(v) => setStatus(v as MeetingStatus | "all")}>
+              <SelectTrigger className="w-full lg:w-[160px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={projectId} onValueChange={setProjectId}>
+              <SelectTrigger className="w-full lg:w-[200px]">
+                <SelectValue placeholder="Project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All projects</SelectItem>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant={mineOnly ? "default" : "outline"}
+              onClick={() => setMineOnly((v) => !v)}
+              className="whitespace-nowrap"
+            >
+              My meetings
+            </Button>
           </div>
         </CardContent>
       </Card>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      ) : isError ? (
+        <EmptyState
+          icon={AlertTriangle}
+          title="Failed to load meetings"
+          description="Check your connection and try again."
+          action={
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          }
+        />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={Calendar}
+          title="No meetings scheduled"
+          description="Create a meeting to track agendas, minutes, and action items."
+          action={
+            canCreate ? (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Meeting
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Schedule</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">
+                    <Users className="h-4 w-4 inline" />
+                  </TableHead>
+                  <TableHead className="text-center">
+                    <ClipboardList className="h-4 w-4 inline" />
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell>
+                      <Link
+                        to="/meetings/$id"
+                        params={{ id: m.id }}
+                        className="font-medium hover:underline flex items-center gap-2"
+                      >
+                        {m.title}
+                        {m.has_today_badge && (
+                          <Badge variant="secondary" className="text-xs">
+                            Today
+                          </Badge>
+                        )}
+                        {m.overdue_actions_count > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {m.overdue_actions_count} overdue
+                          </Badge>
+                        )}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm max-w-[140px] truncate">
+                      {m.project_name ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-sm whitespace-nowrap">
+                      {formatDateTime(m.scheduled_start)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={MEETING_STATUS_CLASS[m.status]}>
+                        {MEETING_STATUS_LABEL[m.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center text-sm">{m.attendee_count}</TableCell>
+                    <TableCell className="text-center text-sm">{m.open_actions_count}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {hasNextPage && (
+            <div className="flex justify-center mt-4">
+              <Button
+                variant="outline"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Load more
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+
+      <MeetingFormModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onSubmit={handleCreate}
+        isPending={createMut.isPending}
+      />
     </>
   );
 }
