@@ -1,10 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { PageHeader, StatCard } from "@/components/layout/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+/**
+ * Submittals List Page — Phase 7
+ *
+ * Dynamic data from useSubmittals() with search, status filter, discipline
+ * filter, client-side pagination, and due-date badges.
+ * Role-gated Create button and Link to detail page.
+ */
+
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useMemo } from "react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -13,17 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -32,424 +27,415 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { submittals, DISCIPLINES, ACTION_CODES, statusColor } from "@/lib/dummy-data";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { SubmittalFormModal } from "@/components/submittals/SubmittalFormModal";
+import { useSubmittals, useCreateSubmittal } from "@/hooks/api/useSubmittals";
+import { useAuth } from "@/contexts/auth-context";
+import { IS_SUPABASE_CONFIGURED } from "@/lib/supabase";
+import { getDueBadge } from "@/types/submittal-view";
+import type { SubmittalStatus } from "@/types/database";
+import { DISCIPLINES } from "@/lib/dummy-data";
 import {
-  Upload,
-  FileCheck2,
-  CheckCircle2,
+  Plus,
+  Search,
   AlertTriangle,
-  RefreshCw,
-  XCircle,
-  Archive,
-  Layers,
-  Printer,
-  FileText,
-  ZoomIn,
-  ZoomOut,
+  Clock,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  MessageSquarePlus,
-  Highlighter,
-  Sparkles,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/submittals")({
-  head: () => ({ meta: [{ title: "Submittal Reviewer — ElectraFlow AI" }] }),
+  head: () => ({ meta: [{ title: "Submittals — ElectraFlow AI" }] }),
   component: SubmittalsPage,
 });
 
-function SubmittalsPage() {
-  const [disciplines, setDisciplines] = useState<string[]>(["Division 26 - Electrical"]);
-  const [discOpen, setDiscOpen] = useState(false);
-  const [compareOpen, setCompareOpen] = useState(false);
-  const [printOpen, setPrintOpen] = useState(false);
-  const [items, setItems] = useState(submittals);
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-  const counts = {
-    total: items.length,
-    none: items.filter((i) => i.status === "No Exception").length,
-    nc: items.filter((i) => i.status === "Need Corrections").length,
-    res: items.filter((i) => i.status === "Resubmittal Required").length,
-    rej: items.filter((i) => i.status === "Rejected").length,
-    rec: items.filter((i) => i.status === "For Record Only").length,
-  };
+const PAGE_SIZE = 10;
+
+const STATUS_LABELS: Record<SubmittalStatus, string> = {
+  draft: "Draft",
+  submitted: "Submitted",
+  under_review: "In Review",
+  approved: "Approved",
+  approved_as_noted: "Approved as Noted",
+  revise_and_resubmit: "Revise & Resubmit",
+  rejected: "Rejected",
+  archived: "Archived",
+};
+
+const STATUS_CLASS: Record<SubmittalStatus, string> = {
+  draft: "bg-muted text-muted-foreground border-border",
+  submitted: "bg-info/15 text-info border-info/30",
+  under_review: "bg-info/15 text-info border-info/30",
+  approved: "bg-success/15 text-success border-success/30",
+  approved_as_noted: "bg-success/15 text-success border-success/30",
+  rejected: "bg-destructive/15 text-destructive border-destructive/30",
+  revise_and_resubmit: "bg-warning/15 text-warning border-warning/30",
+  archived: "bg-muted text-muted-foreground border-border",
+};
+
+function canCreate(role: string | null | undefined): boolean {
+  const r = (role ?? "").toLowerCase().replace(/ /g, "_");
+  return ["admin", "project_manager", "senior_electrical_engineer", "electrical_engineer"].includes(
+    r,
+  );
+}
+
+// ─── Due badge component ──────────────────────────────────────────────────────
+
+function DueBadgeChip({ type }: { type: ReturnType<typeof getDueBadge> }) {
+  if (!type) return null;
+  if (type === "overdue")
+    return (
+      <Badge
+        variant="outline"
+        className="ml-1 bg-destructive/15 text-destructive border-destructive/30 text-[10px] px-1.5 py-0"
+      >
+        <AlertTriangle className="h-2.5 w-2.5 mr-0.5" /> Overdue
+      </Badge>
+    );
+  if (type === "due_soon")
+    return (
+      <Badge
+        variant="outline"
+        className="ml-1 bg-warning/15 text-warning border-warning/30 text-[10px] px-1.5 py-0"
+      >
+        <Clock className="h-2.5 w-2.5 mr-0.5" /> Due Soon
+      </Badge>
+    );
+  if (type === "approved_late")
+    return (
+      <Badge
+        variant="outline"
+        className="ml-1 bg-orange-500/15 text-orange-600 border-orange-500/30 text-[10px] px-1.5 py-0"
+      >
+        <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Approved Late
+      </Badge>
+    );
+  return null;
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex gap-3 px-4 py-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-4 flex-1" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Page component ───────────────────────────────────────────────────────────
+
+function SubmittalsPage() {
+  const { role } = useAuth();
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<SubmittalStatus | "all">("all");
+  const [disciplineFilter, setDisciplineFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [showArchived, setShowArchived] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const {
+    data: result,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useSubmittals({
+    status: statusFilter,
+    discipline: disciplineFilter === "all" ? undefined : disciplineFilter,
+    includeArchived: showArchived,
+  });
+
+  const createMutation = useCreateSubmittal();
+
+  const isMockMode = result?.isMockData ?? !IS_SUPABASE_CONFIGURED;
+
+  // Client-side search + pagination
+  const allItems = result?.data ?? [];
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return allItems;
+    return allItems.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.submittal_number.toLowerCase().includes(q) ||
+        s.spec_section?.toLowerCase().includes(q) ||
+        s.project_name?.toLowerCase().includes(q),
+    );
+  }, [allItems, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  function handleSearchChange(v: string) {
+    setSearch(v);
+    setPage(1);
+  }
+  function handleStatusChange(v: string) {
+    setStatusFilter(v as SubmittalStatus | "all");
+    setPage(1);
+  }
+  function handleDisciplineChange(v: string) {
+    setDisciplineFilter(v);
+    setPage(1);
+  }
 
   return (
-    <>
-      <PageHeader
-        title="Submittal Reviewer"
-        subtitle="AI-assisted comparison of contractor submittals against specifications."
-        actions={
-          <>
-            <Button variant="outline" onClick={() => setCompareOpen(true)}>
-              <Layers className="h-4 w-4 mr-2" />
-              Side-by-side
-            </Button>
-            <Button onClick={() => setPrintOpen(true)}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print Report
-            </Button>
-          </>
-        }
-      />
-
-      <div className="grid grid-cols-12 gap-4 mb-4">
-        <Card className="col-span-12 lg:col-span-5">
-          <CardHeader>
-            <CardTitle className="text-base">Project Details</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5 col-span-2">
-              <Label>Project Name</Label>
-              <Input defaultValue="Riyadh Metro Phase 3 - Substation" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Project Location</Label>
-              <Input defaultValue="Riyadh, KSA" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Contractor</Label>
-              <Input defaultValue="ALEC Engineering" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Submittal Number</Label>
-              <Input defaultValue="SUB-2025-0148" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Reviewed By</Label>
-              <Input defaultValue="Ahmed Hassan, PE" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Submission Date</Label>
-              <Input type="date" defaultValue="2025-06-20" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Due Date</Label>
-              <Input type="date" defaultValue="2025-06-30" />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label>Disciplines</Label>
-              <Dialog open={discOpen} onOpenChange={setDiscOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between font-normal">
-                    {disciplines.length} selected
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Select Disciplines</DialogTitle>
-                    <DialogDescription>
-                      Choose the divisions the AI should review against.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-2 py-2">
-                    {DISCIPLINES.map((d) => {
-                      const on = disciplines.includes(d);
-                      return (
-                        <label
-                          key={d}
-                          className="flex items-center gap-3 p-2 rounded-md border hover:bg-muted cursor-pointer"
-                        >
-                          <Checkbox
-                            checked={on}
-                            onCheckedChange={() =>
-                              setDisciplines((p) => (on ? p.filter((x) => x !== d) : [...p, d]))
-                            }
-                          />
-                          <span className="text-sm">{d}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={() => setDiscOpen(false)}>Confirm</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              <div className="flex flex-wrap gap-1.5 mt-1">
-                {disciplines.map((d) => (
-                  <Badge key={d} variant="outline">
-                    {d}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-12 lg:col-span-7">
-          <CardHeader>
-            <CardTitle className="text-base">Upload Files</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Specification", req: true },
-              { label: "Submittal", req: true },
-              { label: "Drawings", req: false },
-              { label: "Custom Instructions", req: false },
-            ].map((f) => (
-              <div
-                key={f.label}
-                className="border-2 border-dashed rounded-md p-4 text-center bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-              >
-                <Upload className="h-6 w-6 mx-auto text-muted-foreground" />
-                <div className="text-sm font-medium mt-2">
-                  {f.label} {f.req && <span className="text-destructive">*</span>}
-                </div>
-                <div className="text-xs text-muted-foreground">PDF, DOCX</div>
-              </div>
-            ))}
-            <Button className="col-span-2" onClick={() => toast.success("AI review started…")}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Run AI Review
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
-        <StatCard label="Total Items" value={counts.total} icon={FileCheck2} />
-        <StatCard label="No Exceptions" value={counts.none} icon={CheckCircle2} intent="success" />
-        <StatCard
-          label="Need Corrections"
-          value={counts.nc}
-          icon={AlertTriangle}
-          intent="warning"
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <PageHeader
+          title="Submittals"
+          subtitle="Track submittal packages, reviews, and approvals."
         />
-        <StatCard label="Resubmittal Req." value={counts.res} icon={RefreshCw} intent="warning" />
-        <StatCard label="Rejected" value={counts.rej} icon={XCircle} intent="destructive" />
-        <StatCard label="For Record Only" value={counts.rec} icon={Archive} />
+        {canCreate(role) && (
+          <Button onClick={() => setCreateOpen(true)} className="shrink-0">
+            <Plus className="h-4 w-4 mr-2" /> Create Submittal
+          </Button>
+        )}
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Submittal Review Items</CardTitle>
-          <div className="flex gap-2">
-            <Input placeholder="Search…" className="h-9 w-56" />
-            <Button variant="outline" size="sm">
-              Export Excel
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                {[
-                  "Section",
-                  "Paragraph",
-                  "Mark",
-                  "Product",
-                  "Notes",
-                  "Status",
-                  "Action",
-                  "Assigned To",
-                  "Due Date",
-                  "",
-                ].map((h) => (
-                  <TableHead key={h} className="px-3 font-medium whitespace-nowrap">
-                    {h}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((s, idx) => (
-                <TableRow key={s.id}>
-                  <TableCell className="px-3 font-mono text-xs">{s.section}</TableCell>
-                  <TableCell className="px-3 font-mono text-xs">{s.paragraph}</TableCell>
-                  <TableCell className="px-3">{s.mark}</TableCell>
-                  <TableCell className="px-3 font-medium">{s.product}</TableCell>
-                  <TableCell className="px-3 text-muted-foreground max-w-[200px] truncate">
-                    {s.notes}
-                  </TableCell>
-                  <TableCell className="px-3">
-                    <Badge variant="outline" className={statusColor[s.status]}>
-                      {s.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-3 w-44">
-                    <Select
-                      value={s.action}
-                      onValueChange={(v) =>
-                        setItems((prev) =>
-                          prev.map((x, i) => (i === idx ? { ...x, action: v } : x)),
-                        )
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ACTION_CODES.map((a) => (
-                          <SelectItem key={a} value={a}>
-                            {a}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="px-3">{s.assignedTo}</TableCell>
-                  <TableCell className="px-3 whitespace-nowrap">{s.due}</TableCell>
-                  <TableCell className="px-3">
-                    <Button size="sm" variant="ghost" onClick={() => setCompareOpen(true)}>
-                      Compare
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Demo banner */}
+      {isMockMode && (
+        <Alert className="border-warning/40 bg-warning/10 text-warning text-sm">
+          <AlertDescription>
+            Demo mode — data is simulated. Configure Supabase to use the real database.
+          </AlertDescription>
+        </Alert>
+      )}
 
-      {/* Side-by-side comparison */}
-      <Dialog open={compareOpen} onOpenChange={setCompareOpen}>
-        <DialogContent className="!max-w-7xl !w-[95vw] h-[88vh] p-0 flex flex-col">
-          <DialogHeader className="p-4 border-b">
-            <DialogTitle className="flex items-center justify-between">
-              <span>Document Comparison · LV-CBL-01</span>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline">
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="outline">
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="outline">
-                  <Highlighter className="h-4 w-4 mr-1" />
-                  Highlight
-                </Button>
-                <Button size="sm" variant="outline">
-                  <MessageSquarePlus className="h-4 w-4 mr-1" />
-                  Note
-                </Button>
-                <Select defaultValue="REV,RNR">
-                  <SelectTrigger className="w-40 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ACTION_CODES.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {a}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 flex-1 overflow-hidden">
-            {[
-              {
-                title: "Design Documents (Specification)",
-                subtitle: "Section 26 05 19 — Page 3 of 12",
-                color: "bg-info/5",
-              },
-              {
-                title: "Contractor Submittal",
-                subtitle: "ALEC — Submittal 0148 — Page 1 of 8",
-                color: "bg-success/5",
-              },
-            ].map((p, i) => (
-              <div key={i} className="border-r last:border-0 flex flex-col">
-                <div className={`px-4 py-2 border-b ${p.color}`}>
-                  <div className="text-sm font-semibold">{p.title}</div>
-                  <div className="text-xs text-muted-foreground">{p.subtitle}</div>
-                </div>
-                <div className="flex-1 p-6 overflow-auto bg-muted/20">
-                  <div className="mx-auto max-w-md aspect-[3/4] bg-card border rounded shadow-sm p-6 text-xs leading-relaxed">
-                    <FileText className="h-5 w-5 text-muted-foreground mb-3" />
-                    <h3 className="font-semibold text-sm mb-2">
-                      {i === 0 ? "2.1 Power Cables" : "Cable Datasheet — XLPE 4C×95mm²"}
-                    </h3>
-                    <p className="text-muted-foreground">
-                      A. Conductors shall be copper, Class 2 stranded per IEC 60228.
-                    </p>
-                    <p
-                      className={`mt-2 ${i === 1 ? "bg-warning/30 px-1" : "text-muted-foreground"}`}
-                    >
-                      B. Insulation: XLPE rated 600/1000V, operating temp 90°C.
-                    </p>
-                    <p className="mt-2 text-muted-foreground">
-                      C. Sheath: PVC, flame retardant per IEC 60332-3.
-                    </p>
-                    <p
-                      className={`mt-2 ${i === 0 ? "bg-success/30 px-1" : "text-muted-foreground"}`}
-                    >
-                      D. Short-circuit rating ≥ 13.5 kA for 1 second.
-                    </p>
-                    <p className="mt-2 text-muted-foreground">
-                      E. Color coding per project standard.
-                    </p>
-                  </div>
-                </div>
-                <div className="border-t p-2 flex items-center justify-center gap-2 text-xs">
-                  <Button size="icon" variant="ghost" className="h-7 w-7">
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span>Page 1 / {i === 0 ? 12 : 8}</span>
-                  <Button size="icon" variant="ghost" className="h-7 w-7">
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Search by number, title, or project…"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+        </div>
+
+        <Select value={statusFilter} onValueChange={handleStatusChange}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {(Object.keys(STATUS_LABELS) as SubmittalStatus[]).map((s) => (
+              <SelectItem key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </SelectItem>
             ))}
-          </div>
-        </DialogContent>
-      </Dialog>
+          </SelectContent>
+        </Select>
 
-      {/* Print Report Modal */}
-      <Dialog open={printOpen} onOpenChange={setPrintOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Print Submittal Review Report</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div>
-              <Label>Review Action (overall)</Label>
-              <Select defaultValue="REV,RNR">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACTION_CODES.map((a) => (
-                    <SelectItem key={a} value={a}>
-                      {a}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              {[
-                "Include project details",
-                "Include comments",
-                "Include action codes",
-                "Include reviewer name & date",
-                "Include signature section",
-              ].map((o) => (
-                <label key={o} className="flex items-center gap-2">
-                  <Checkbox defaultChecked />
-                  <span className="text-sm">{o}</span>
-                </label>
-              ))}
-            </div>
-            <div>
-              <Label>Additional notes</Label>
-              <Textarea placeholder="Optional cover letter…" />
-            </div>
+        <Select value={disciplineFilter} onValueChange={handleDisciplineChange}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="All disciplines" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Disciplines</SelectItem>
+            {DISCIPLINES.map((d) => (
+              <SelectItem key={d} value={d}>
+                {d}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant={showArchived ? "default" : "outline"}
+          size="sm"
+          className="whitespace-nowrap self-stretch sm:self-auto"
+          onClick={() => {
+            setShowArchived((p) => !p);
+            setPage(1);
+          }}
+        >
+          {showArchived ? "Hide Archived" : "Show Archived"}
+        </Button>
+      </div>
+
+      {/* Table / states */}
+      {isLoading ? (
+        <TableSkeleton />
+      ) : isError ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center space-y-3">
+          <p className="text-destructive font-medium">Failed to load submittals</p>
+          <p className="text-sm text-muted-foreground">
+            {(error as Error)?.message ?? "Unknown error"}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            Retry
+          </Button>
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title={
+            search || statusFilter !== "all"
+              ? "No submittals match your filters"
+              : "No submittals yet"
+          }
+          description={
+            canCreate(role)
+              ? "Create the first submittal to get started."
+              : "No submittals have been created for this organisation yet."
+          }
+          action={
+            canCreate(role) ? (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" /> Create Submittal
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <>
+          <div className="rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="px-4 py-3 font-semibold">Number</TableHead>
+                  <TableHead className="px-3 py-3 font-semibold">Title</TableHead>
+                  <TableHead className="px-3 py-3 font-semibold hidden md:table-cell">
+                    Project
+                  </TableHead>
+                  <TableHead className="px-3 py-3 font-semibold">Status</TableHead>
+                  <TableHead className="px-3 py-3 font-semibold hidden sm:table-cell">
+                    Rev
+                  </TableHead>
+                  <TableHead className="px-3 py-3 font-semibold hidden lg:table-cell">
+                    Due Date
+                  </TableHead>
+                  <TableHead className="px-3 py-3 font-semibold hidden xl:table-cell">
+                    Submitted By
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paged.map((s) => {
+                  const badge = getDueBadge(s);
+                  return (
+                    <TableRow key={s.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell className="px-4 py-3">
+                        <Link
+                          to="/submittals/$id"
+                          params={{ id: s.id }}
+                          className="font-mono text-sm font-medium text-primary hover:underline"
+                        >
+                          {s.submittal_number}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
+                        <Link
+                          to="/submittals/$id"
+                          params={{ id: s.id }}
+                          className="hover:underline text-sm font-medium line-clamp-1"
+                        >
+                          {s.title}
+                        </Link>
+                        {s.spec_section && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{s.spec_section}</p>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 hidden md:table-cell text-sm text-muted-foreground line-clamp-1">
+                        {s.project_name ?? "—"}
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
+                        <Badge variant="outline" className={`text-xs ${STATUS_CLASS[s.status]}`}>
+                          {STATUS_LABELS[s.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-3 py-3 hidden sm:table-cell text-sm text-center">
+                        v{s.revision_number}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 hidden lg:table-cell text-sm">
+                        {s.review_due_date ? (
+                          <span className="inline-flex items-center gap-1">
+                            {formatDate(s.review_due_date)}
+                            <DueBadgeChip type={badge} />
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 hidden xl:table-cell text-sm text-muted-foreground">
+                        {s.submitter_name ?? "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => toast.success("DOCX exported")}>
-              Export DOCX
-            </Button>
-            <Button onClick={() => toast.success("PDF exported")}>Export PDF</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Showing {(safePage - 1) * PAGE_SIZE + 1}–
+                {Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={safePage === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="px-3 py-1 border rounded text-sm">
+                  {safePage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={safePage === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Create modal */}
+      <SubmittalFormModal
+        open={createOpen}
+        onClose={(success) => {
+          setCreateOpen(false);
+          if (success) toast.success("Submittal created successfully.");
+        }}
+        isMockMode={isMockMode}
+        onCreate={async (input) => {
+          const result = await createMutation.mutateAsync(input);
+          return { error: result.error };
+        }}
+      />
+    </div>
   );
 }

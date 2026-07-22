@@ -19,7 +19,13 @@ import {
   UserSquare2,
   Settings,
   Zap,
+  Clock,
+  CalendarOff,
+  Activity,
+  Shield,
 } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { canAccess } from "@/lib/permissions";
 
 export const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -31,14 +37,20 @@ export const navItems = [
   { to: "/financials", label: "Financials", icon: Wallet },
   { to: "/resources", label: "Resources", icon: Users },
   { to: "/workload", label: "Workload", icon: CalendarClock },
+  { to: "/timesheets", label: "Timesheets", icon: Clock },
+  { to: "/leave", label: "Leave", icon: CalendarOff },
   { to: "/hr", label: "HR", icon: UserCog },
   { to: "/executive", label: "Executive", icon: Briefcase },
   { to: "/ai", label: "AI Assistant", icon: Sparkles },
   { to: "/rfi", label: "RFI", icon: MessageSquare },
   { to: "/ncr", label: "NCR", icon: AlertTriangle },
   { to: "/meetings", label: "Meetings", icon: ClipboardList },
+  { to: "/electrical", label: "Electrical", icon: Zap },
   { to: "/reports", label: "Reports", icon: FileBarChart },
-  { to: "/client", label: "Client Portal", icon: UserSquare2 },
+  { to: "/audit", label: "Audit Explorer", icon: Shield },
+  { to: "/client-portal", label: "Client Portal", icon: UserSquare2 },
+  { to: "/users", label: "Users", icon: UserCog },
+  { to: "/activity", label: "Activity Center", icon: Activity },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -60,9 +72,14 @@ export function SidebarBrand() {
 
 export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { role } = useAuth();
+
+  // Filter nav items to only those the current role can access
+  const visibleItems = navItems.filter((item) => canAccess(role, item.to));
+
   return (
     <nav className="flex-1 overflow-y-auto py-2">
-      {navItems.map(({ to, label, icon: Icon }) => {
+      {visibleItems.map(({ to, label, icon: Icon }) => {
         const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
         return (
           <Link
@@ -87,7 +104,7 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 export function SidebarFooter() {
   return (
     <div className="p-3 border-t border-sidebar-border text-[11px] text-sidebar-foreground/60">
-      v1.0 · © ElectraFlow
+      v2.0 · © ElectraFlow
     </div>
   );
 }

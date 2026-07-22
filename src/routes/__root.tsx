@@ -7,12 +7,21 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { ClerkProvider } from "@clerk/react";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/contexts/auth-context";
+import { logAuthEnvDiagnostics } from "@/lib/auth-diagnostics";
+
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+
+if (import.meta.env.DEV) {
+  logAuthEnvDiagnostics();
+}
 
 function NotFoundComponent() {
   return (
@@ -115,15 +124,28 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function AppProviders({ children }: { children: ReactNode }) {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    return <AuthProvider>{children}</AuthProvider>;
+  }
+  return (
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/login">
+      <AuthProvider>{children}</AuthProvider>
+    </ClerkProvider>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <Outlet />
-        <Toaster richColors position="top-right" />
-      </ThemeProvider>
-    </QueryClientProvider>
+    <AppProviders>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <Outlet />
+          <Toaster richColors position="top-right" />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </AppProviders>
   );
 }

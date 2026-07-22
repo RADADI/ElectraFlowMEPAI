@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +22,11 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — ElectraFlow AI" }] }),
-  component: SettingsPage,
+  component: () => (
+    <RoleGuard allowedRoles={["Admin"]}>
+      <SettingsPage />
+    </RoleGuard>
+  ),
 });
 
 const users = [
