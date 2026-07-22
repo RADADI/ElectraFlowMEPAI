@@ -188,16 +188,34 @@ export const EVENT_TYPES = {
   REPORT_GENERATED: "report.generated",
   EXPORT_COMPLETED: "export.completed",
   EXPORT_FAILED: "export.failed",
-  // Future — Meetings
+  // Meetings — Phase 15A
   MEETING_CREATED: "meeting.created",
+  MEETING_UPDATED: "meeting.updated",
+  MEETING_CANCELLED: "meeting.cancelled",
   MEETING_ACTION_ASSIGNED: "meeting.action_assigned",
-  // Future — Electrical
+  MEETING_ACTION_COMPLETED: "meeting.action_completed",
+  // Electrical — Phase 15B
   PANEL_SCHEDULE_CREATED: "panel_schedule.created",
+  PANEL_SCHEDULE_REVISED: "panel_schedule.revised",
+  PANEL_SCHEDULE_APPROVED: "panel_schedule.approved",
+  PANEL_SCHEDULE_REJECTED: "panel_schedule.rejected",
+  LOAD_CALCULATION_CREATED: "load_calculation.created",
+  LOAD_CALCULATION_UPDATED: "load_calculation.updated",
+  LOAD_CALCULATION_APPROVED: "load_calculation.approved",
+  LOAD_CALCULATION_REJECTED: "load_calculation.rejected",
+  EQUIPMENT_CREATED: "equipment.created",
+  EQUIPMENT_UPDATED: "equipment.updated",
+  EQUIPMENT_ARCHIVED: "equipment.archived",
   DRAWING_REVISION_UPLOADED: "drawing.revision_uploaded",
   // Future — AI Copilot
   AI_SUMMARY_READY: "ai.summary_ready",
   AI_SUGGESTION_READY: "ai.suggestion_ready",
+  AI_SUGGESTION_ACCEPTED: "ai.suggestion_accepted",
+  AI_SUGGESTION_REJECTED: "ai.suggestion_rejected",
   AI_DOCUMENT_INDEXED: "ai.document_indexed",
+  AI_CHAT_CREATED: "ai.chat_created",
+  AI_EMBEDDING_COMPLETED: "ai.embedding_completed",
+  AI_EMBEDDING_FAILED: "ai.embedding_failed",
   // Future — Client Portal
   CLIENT_COMMENT_ADDED: "client.comment_added",
   CLIENT_INVOICE_VIEWED: "client.invoice_viewed",
@@ -246,6 +264,7 @@ export function getEventCategory(eventType: string): NotificationCategory {
     eventType.startsWith("panel_schedule.") ||
     eventType.startsWith("load_calculation.") ||
     eventType.startsWith("equipment_list.") ||
+    eventType.startsWith("equipment.") ||
     eventType.startsWith("drawing.")
   )
     return "electrical";

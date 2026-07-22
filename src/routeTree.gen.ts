@@ -33,8 +33,10 @@ import { Route as AppLeaveRouteImport } from './routes/_app.leave'
 import { Route as AppHrRouteImport } from './routes/_app.hr'
 import { Route as AppFinancialsRouteImport } from './routes/_app.financials'
 import { Route as AppExecutiveRouteImport } from './routes/_app.executive'
+import { Route as AppElectricalRouteImport } from './routes/_app.electrical'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppClientPortalRouteImport } from './routes/_app.client-portal'
+import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppAppsRouteImport } from './routes/_app.apps'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
 import { Route as AppActivityRouteImport } from './routes/_app.activity'
@@ -42,8 +44,28 @@ import { Route as AppTimesheetsIdRouteImport } from './routes/_app.timesheets.$i
 import { Route as AppSubmittalsIdRouteImport } from './routes/_app.submittals.$id'
 import { Route as AppRfiIdRouteImport } from './routes/_app.rfi.$id'
 import { Route as AppResourcesIdRouteImport } from './routes/_app.resources.$id'
+import { Route as AppReportsIdRouteImport } from './routes/_app.reports.$id'
 import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
+import { Route as AppMeetingsIdRouteImport } from './routes/_app.meetings.$id'
+import { Route as AppElectricalPanelsRouteImport } from './routes/_app.electrical.panels'
+import { Route as AppElectricalLoadCalculationsRouteImport } from './routes/_app.electrical.load-calculations'
+import { Route as AppElectricalEquipmentRouteImport } from './routes/_app.electrical.equipment'
 import { Route as AppDocumentsIdRouteImport } from './routes/_app.documents.$id'
+import { Route as AppClientPortalSubmittalsRouteImport } from './routes/_app.client-portal.submittals'
+import { Route as AppClientPortalRfiRouteImport } from './routes/_app.client-portal.rfi'
+import { Route as AppClientPortalMeetingsRouteImport } from './routes/_app.client-portal.meetings'
+import { Route as AppClientPortalInvoicesRouteImport } from './routes/_app.client-portal.invoices'
+import { Route as AppClientPortalDownloadsRouteImport } from './routes/_app.client-portal.downloads'
+import { Route as AppClientPortalDocumentsRouteImport } from './routes/_app.client-portal.documents'
+import { Route as AppClientPortalActivityRouteImport } from './routes/_app.client-portal.activity'
+import { Route as AppAiSuggestionsRouteImport } from './routes/_app.ai.suggestions'
+import { Route as AppAiJobsRouteImport } from './routes/_app.ai.jobs'
+import { Route as AppAiChatRouteImport } from './routes/_app.ai.chat'
+import { Route as AppElectricalPanelsIdRouteImport } from './routes/_app.electrical.panels.$id'
+import { Route as AppElectricalLoadCalculationsIdRouteImport } from './routes/_app.electrical.load-calculations.$id'
+import { Route as AppClientPortalRfiIdRouteImport } from './routes/_app.client-portal.rfi.$id'
+import { Route as AppClientPortalInvoicesIdRouteImport } from './routes/_app.client-portal.invoices.$id'
+import { Route as AppAiChatIdRouteImport } from './routes/_app.ai.chat.$id'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
@@ -164,6 +186,11 @@ const AppExecutiveRoute = AppExecutiveRouteImport.update({
   path: '/executive',
   getParentRoute: () => AppRoute,
 } as any)
+const AppElectricalRoute = AppElectricalRouteImport.update({
+  id: '/electrical',
+  path: '/electrical',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDocumentsRoute = AppDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -172,6 +199,11 @@ const AppDocumentsRoute = AppDocumentsRouteImport.update({
 const AppClientPortalRoute = AppClientPortalRouteImport.update({
   id: '/client-portal',
   path: '/client-portal',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAppsRoute = AppAppsRouteImport.update({
@@ -209,15 +241,121 @@ const AppResourcesIdRoute = AppResourcesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppResourcesRoute,
 } as any)
+const AppReportsIdRoute = AppReportsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppReportsRoute,
+} as any)
 const AppProjectsIdRoute = AppProjectsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AppProjectsRoute,
 } as any)
+const AppMeetingsIdRoute = AppMeetingsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppMeetingsRoute,
+} as any)
+const AppElectricalPanelsRoute = AppElectricalPanelsRouteImport.update({
+  id: '/panels',
+  path: '/panels',
+  getParentRoute: () => AppElectricalRoute,
+} as any)
+const AppElectricalLoadCalculationsRoute =
+  AppElectricalLoadCalculationsRouteImport.update({
+    id: '/load-calculations',
+    path: '/load-calculations',
+    getParentRoute: () => AppElectricalRoute,
+  } as any)
+const AppElectricalEquipmentRoute = AppElectricalEquipmentRouteImport.update({
+  id: '/equipment',
+  path: '/equipment',
+  getParentRoute: () => AppElectricalRoute,
+} as any)
 const AppDocumentsIdRoute = AppDocumentsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AppDocumentsRoute,
+} as any)
+const AppClientPortalSubmittalsRoute =
+  AppClientPortalSubmittalsRouteImport.update({
+    id: '/submittals',
+    path: '/submittals',
+    getParentRoute: () => AppClientPortalRoute,
+  } as any)
+const AppClientPortalRfiRoute = AppClientPortalRfiRouteImport.update({
+  id: '/rfi',
+  path: '/rfi',
+  getParentRoute: () => AppClientPortalRoute,
+} as any)
+const AppClientPortalMeetingsRoute = AppClientPortalMeetingsRouteImport.update({
+  id: '/meetings',
+  path: '/meetings',
+  getParentRoute: () => AppClientPortalRoute,
+} as any)
+const AppClientPortalInvoicesRoute = AppClientPortalInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => AppClientPortalRoute,
+} as any)
+const AppClientPortalDownloadsRoute =
+  AppClientPortalDownloadsRouteImport.update({
+    id: '/downloads',
+    path: '/downloads',
+    getParentRoute: () => AppClientPortalRoute,
+  } as any)
+const AppClientPortalDocumentsRoute =
+  AppClientPortalDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => AppClientPortalRoute,
+  } as any)
+const AppClientPortalActivityRoute = AppClientPortalActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AppClientPortalRoute,
+} as any)
+const AppAiSuggestionsRoute = AppAiSuggestionsRouteImport.update({
+  id: '/suggestions',
+  path: '/suggestions',
+  getParentRoute: () => AppAiRoute,
+} as any)
+const AppAiJobsRoute = AppAiJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => AppAiRoute,
+} as any)
+const AppAiChatRoute = AppAiChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AppAiRoute,
+} as any)
+const AppElectricalPanelsIdRoute = AppElectricalPanelsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppElectricalPanelsRoute,
+} as any)
+const AppElectricalLoadCalculationsIdRoute =
+  AppElectricalLoadCalculationsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AppElectricalLoadCalculationsRoute,
+  } as any)
+const AppClientPortalRfiIdRoute = AppClientPortalRfiIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppClientPortalRfiRoute,
+} as any)
+const AppClientPortalInvoicesIdRoute =
+  AppClientPortalInvoicesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AppClientPortalInvoicesRoute,
+  } as any)
+const AppAiChatIdRoute = AppAiChatIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppAiChatRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -227,20 +365,22 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/activity': typeof AppActivityRoute
-  '/ai': typeof AppAiRoute
+  '/ai': typeof AppAiRouteWithChildren
   '/apps': typeof AppAppsRoute
-  '/client-portal': typeof AppClientPortalRoute
+  '/audit': typeof AppAuditRoute
+  '/client-portal': typeof AppClientPortalRouteWithChildren
   '/documents': typeof AppDocumentsRouteWithChildren
+  '/electrical': typeof AppElectricalRouteWithChildren
   '/executive': typeof AppExecutiveRoute
   '/financials': typeof AppFinancialsRoute
   '/hr': typeof AppHrRoute
   '/leave': typeof AppLeaveRoute
-  '/meetings': typeof AppMeetingsRoute
+  '/meetings': typeof AppMeetingsRouteWithChildren
   '/ncr': typeof AppNcrRoute
   '/pm': typeof AppPmRoute
   '/profile': typeof AppProfileRoute
   '/projects': typeof AppProjectsRouteWithChildren
-  '/reports': typeof AppReportsRoute
+  '/reports': typeof AppReportsRouteWithChildren
   '/resources': typeof AppResourcesRouteWithChildren
   '/rfi': typeof AppRfiRouteWithChildren
   '/settings': typeof AppSettingsRoute
@@ -249,12 +389,32 @@ export interface FileRoutesByFullPath {
   '/users': typeof AppUsersRoute
   '/workload': typeof AppWorkloadRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/ai/chat': typeof AppAiChatRouteWithChildren
+  '/ai/jobs': typeof AppAiJobsRoute
+  '/ai/suggestions': typeof AppAiSuggestionsRoute
+  '/client-portal/activity': typeof AppClientPortalActivityRoute
+  '/client-portal/documents': typeof AppClientPortalDocumentsRoute
+  '/client-portal/downloads': typeof AppClientPortalDownloadsRoute
+  '/client-portal/invoices': typeof AppClientPortalInvoicesRouteWithChildren
+  '/client-portal/meetings': typeof AppClientPortalMeetingsRoute
+  '/client-portal/rfi': typeof AppClientPortalRfiRouteWithChildren
+  '/client-portal/submittals': typeof AppClientPortalSubmittalsRoute
   '/documents/$id': typeof AppDocumentsIdRoute
+  '/electrical/equipment': typeof AppElectricalEquipmentRoute
+  '/electrical/load-calculations': typeof AppElectricalLoadCalculationsRouteWithChildren
+  '/electrical/panels': typeof AppElectricalPanelsRouteWithChildren
+  '/meetings/$id': typeof AppMeetingsIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
+  '/reports/$id': typeof AppReportsIdRoute
   '/resources/$id': typeof AppResourcesIdRoute
   '/rfi/$id': typeof AppRfiIdRoute
   '/submittals/$id': typeof AppSubmittalsIdRoute
   '/timesheets/$id': typeof AppTimesheetsIdRoute
+  '/ai/chat/$id': typeof AppAiChatIdRoute
+  '/client-portal/invoices/$id': typeof AppClientPortalInvoicesIdRoute
+  '/client-portal/rfi/$id': typeof AppClientPortalRfiIdRoute
+  '/electrical/load-calculations/$id': typeof AppElectricalLoadCalculationsIdRoute
+  '/electrical/panels/$id': typeof AppElectricalPanelsIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -262,20 +422,22 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/activity': typeof AppActivityRoute
-  '/ai': typeof AppAiRoute
+  '/ai': typeof AppAiRouteWithChildren
   '/apps': typeof AppAppsRoute
-  '/client-portal': typeof AppClientPortalRoute
+  '/audit': typeof AppAuditRoute
+  '/client-portal': typeof AppClientPortalRouteWithChildren
   '/documents': typeof AppDocumentsRouteWithChildren
+  '/electrical': typeof AppElectricalRouteWithChildren
   '/executive': typeof AppExecutiveRoute
   '/financials': typeof AppFinancialsRoute
   '/hr': typeof AppHrRoute
   '/leave': typeof AppLeaveRoute
-  '/meetings': typeof AppMeetingsRoute
+  '/meetings': typeof AppMeetingsRouteWithChildren
   '/ncr': typeof AppNcrRoute
   '/pm': typeof AppPmRoute
   '/profile': typeof AppProfileRoute
   '/projects': typeof AppProjectsRouteWithChildren
-  '/reports': typeof AppReportsRoute
+  '/reports': typeof AppReportsRouteWithChildren
   '/resources': typeof AppResourcesRouteWithChildren
   '/rfi': typeof AppRfiRouteWithChildren
   '/settings': typeof AppSettingsRoute
@@ -285,12 +447,32 @@ export interface FileRoutesByTo {
   '/workload': typeof AppWorkloadRoute
   '/invite/$token': typeof InviteTokenRoute
   '/': typeof AppIndexRoute
+  '/ai/chat': typeof AppAiChatRouteWithChildren
+  '/ai/jobs': typeof AppAiJobsRoute
+  '/ai/suggestions': typeof AppAiSuggestionsRoute
+  '/client-portal/activity': typeof AppClientPortalActivityRoute
+  '/client-portal/documents': typeof AppClientPortalDocumentsRoute
+  '/client-portal/downloads': typeof AppClientPortalDownloadsRoute
+  '/client-portal/invoices': typeof AppClientPortalInvoicesRouteWithChildren
+  '/client-portal/meetings': typeof AppClientPortalMeetingsRoute
+  '/client-portal/rfi': typeof AppClientPortalRfiRouteWithChildren
+  '/client-portal/submittals': typeof AppClientPortalSubmittalsRoute
   '/documents/$id': typeof AppDocumentsIdRoute
+  '/electrical/equipment': typeof AppElectricalEquipmentRoute
+  '/electrical/load-calculations': typeof AppElectricalLoadCalculationsRouteWithChildren
+  '/electrical/panels': typeof AppElectricalPanelsRouteWithChildren
+  '/meetings/$id': typeof AppMeetingsIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
+  '/reports/$id': typeof AppReportsIdRoute
   '/resources/$id': typeof AppResourcesIdRoute
   '/rfi/$id': typeof AppRfiIdRoute
   '/submittals/$id': typeof AppSubmittalsIdRoute
   '/timesheets/$id': typeof AppTimesheetsIdRoute
+  '/ai/chat/$id': typeof AppAiChatIdRoute
+  '/client-portal/invoices/$id': typeof AppClientPortalInvoicesIdRoute
+  '/client-portal/rfi/$id': typeof AppClientPortalRfiIdRoute
+  '/electrical/load-calculations/$id': typeof AppElectricalLoadCalculationsIdRoute
+  '/electrical/panels/$id': typeof AppElectricalPanelsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -300,20 +482,22 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/_app/activity': typeof AppActivityRoute
-  '/_app/ai': typeof AppAiRoute
+  '/_app/ai': typeof AppAiRouteWithChildren
   '/_app/apps': typeof AppAppsRoute
-  '/_app/client-portal': typeof AppClientPortalRoute
+  '/_app/audit': typeof AppAuditRoute
+  '/_app/client-portal': typeof AppClientPortalRouteWithChildren
   '/_app/documents': typeof AppDocumentsRouteWithChildren
+  '/_app/electrical': typeof AppElectricalRouteWithChildren
   '/_app/executive': typeof AppExecutiveRoute
   '/_app/financials': typeof AppFinancialsRoute
   '/_app/hr': typeof AppHrRoute
   '/_app/leave': typeof AppLeaveRoute
-  '/_app/meetings': typeof AppMeetingsRoute
+  '/_app/meetings': typeof AppMeetingsRouteWithChildren
   '/_app/ncr': typeof AppNcrRoute
   '/_app/pm': typeof AppPmRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/projects': typeof AppProjectsRouteWithChildren
-  '/_app/reports': typeof AppReportsRoute
+  '/_app/reports': typeof AppReportsRouteWithChildren
   '/_app/resources': typeof AppResourcesRouteWithChildren
   '/_app/rfi': typeof AppRfiRouteWithChildren
   '/_app/settings': typeof AppSettingsRoute
@@ -323,12 +507,32 @@ export interface FileRoutesById {
   '/_app/workload': typeof AppWorkloadRoute
   '/invite/$token': typeof InviteTokenRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/ai/chat': typeof AppAiChatRouteWithChildren
+  '/_app/ai/jobs': typeof AppAiJobsRoute
+  '/_app/ai/suggestions': typeof AppAiSuggestionsRoute
+  '/_app/client-portal/activity': typeof AppClientPortalActivityRoute
+  '/_app/client-portal/documents': typeof AppClientPortalDocumentsRoute
+  '/_app/client-portal/downloads': typeof AppClientPortalDownloadsRoute
+  '/_app/client-portal/invoices': typeof AppClientPortalInvoicesRouteWithChildren
+  '/_app/client-portal/meetings': typeof AppClientPortalMeetingsRoute
+  '/_app/client-portal/rfi': typeof AppClientPortalRfiRouteWithChildren
+  '/_app/client-portal/submittals': typeof AppClientPortalSubmittalsRoute
   '/_app/documents/$id': typeof AppDocumentsIdRoute
+  '/_app/electrical/equipment': typeof AppElectricalEquipmentRoute
+  '/_app/electrical/load-calculations': typeof AppElectricalLoadCalculationsRouteWithChildren
+  '/_app/electrical/panels': typeof AppElectricalPanelsRouteWithChildren
+  '/_app/meetings/$id': typeof AppMeetingsIdRoute
   '/_app/projects/$id': typeof AppProjectsIdRoute
+  '/_app/reports/$id': typeof AppReportsIdRoute
   '/_app/resources/$id': typeof AppResourcesIdRoute
   '/_app/rfi/$id': typeof AppRfiIdRoute
   '/_app/submittals/$id': typeof AppSubmittalsIdRoute
   '/_app/timesheets/$id': typeof AppTimesheetsIdRoute
+  '/_app/ai/chat/$id': typeof AppAiChatIdRoute
+  '/_app/client-portal/invoices/$id': typeof AppClientPortalInvoicesIdRoute
+  '/_app/client-portal/rfi/$id': typeof AppClientPortalRfiIdRoute
+  '/_app/electrical/load-calculations/$id': typeof AppElectricalLoadCalculationsIdRoute
+  '/_app/electrical/panels/$id': typeof AppElectricalPanelsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -341,8 +545,10 @@ export interface FileRouteTypes {
     | '/activity'
     | '/ai'
     | '/apps'
+    | '/audit'
     | '/client-portal'
     | '/documents'
+    | '/electrical'
     | '/executive'
     | '/financials'
     | '/hr'
@@ -361,12 +567,32 @@ export interface FileRouteTypes {
     | '/users'
     | '/workload'
     | '/invite/$token'
+    | '/ai/chat'
+    | '/ai/jobs'
+    | '/ai/suggestions'
+    | '/client-portal/activity'
+    | '/client-portal/documents'
+    | '/client-portal/downloads'
+    | '/client-portal/invoices'
+    | '/client-portal/meetings'
+    | '/client-portal/rfi'
+    | '/client-portal/submittals'
     | '/documents/$id'
+    | '/electrical/equipment'
+    | '/electrical/load-calculations'
+    | '/electrical/panels'
+    | '/meetings/$id'
     | '/projects/$id'
+    | '/reports/$id'
     | '/resources/$id'
     | '/rfi/$id'
     | '/submittals/$id'
     | '/timesheets/$id'
+    | '/ai/chat/$id'
+    | '/client-portal/invoices/$id'
+    | '/client-portal/rfi/$id'
+    | '/electrical/load-calculations/$id'
+    | '/electrical/panels/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -376,8 +602,10 @@ export interface FileRouteTypes {
     | '/activity'
     | '/ai'
     | '/apps'
+    | '/audit'
     | '/client-portal'
     | '/documents'
+    | '/electrical'
     | '/executive'
     | '/financials'
     | '/hr'
@@ -397,12 +625,32 @@ export interface FileRouteTypes {
     | '/workload'
     | '/invite/$token'
     | '/'
+    | '/ai/chat'
+    | '/ai/jobs'
+    | '/ai/suggestions'
+    | '/client-portal/activity'
+    | '/client-portal/documents'
+    | '/client-portal/downloads'
+    | '/client-portal/invoices'
+    | '/client-portal/meetings'
+    | '/client-portal/rfi'
+    | '/client-portal/submittals'
     | '/documents/$id'
+    | '/electrical/equipment'
+    | '/electrical/load-calculations'
+    | '/electrical/panels'
+    | '/meetings/$id'
     | '/projects/$id'
+    | '/reports/$id'
     | '/resources/$id'
     | '/rfi/$id'
     | '/submittals/$id'
     | '/timesheets/$id'
+    | '/ai/chat/$id'
+    | '/client-portal/invoices/$id'
+    | '/client-portal/rfi/$id'
+    | '/electrical/load-calculations/$id'
+    | '/electrical/panels/$id'
   id:
     | '__root__'
     | '/_app'
@@ -413,8 +661,10 @@ export interface FileRouteTypes {
     | '/_app/activity'
     | '/_app/ai'
     | '/_app/apps'
+    | '/_app/audit'
     | '/_app/client-portal'
     | '/_app/documents'
+    | '/_app/electrical'
     | '/_app/executive'
     | '/_app/financials'
     | '/_app/hr'
@@ -434,12 +684,32 @@ export interface FileRouteTypes {
     | '/_app/workload'
     | '/invite/$token'
     | '/_app/'
+    | '/_app/ai/chat'
+    | '/_app/ai/jobs'
+    | '/_app/ai/suggestions'
+    | '/_app/client-portal/activity'
+    | '/_app/client-portal/documents'
+    | '/_app/client-portal/downloads'
+    | '/_app/client-portal/invoices'
+    | '/_app/client-portal/meetings'
+    | '/_app/client-portal/rfi'
+    | '/_app/client-portal/submittals'
     | '/_app/documents/$id'
+    | '/_app/electrical/equipment'
+    | '/_app/electrical/load-calculations'
+    | '/_app/electrical/panels'
+    | '/_app/meetings/$id'
     | '/_app/projects/$id'
+    | '/_app/reports/$id'
     | '/_app/resources/$id'
     | '/_app/rfi/$id'
     | '/_app/submittals/$id'
     | '/_app/timesheets/$id'
+    | '/_app/ai/chat/$id'
+    | '/_app/client-portal/invoices/$id'
+    | '/_app/client-portal/rfi/$id'
+    | '/_app/electrical/load-calculations/$id'
+    | '/_app/electrical/panels/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -621,6 +891,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppExecutiveRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/electrical': {
+      id: '/_app/electrical'
+      path: '/electrical'
+      fullPath: '/electrical'
+      preLoaderRoute: typeof AppElectricalRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/documents': {
       id: '/_app/documents'
       path: '/documents'
@@ -633,6 +910,13 @@ declare module '@tanstack/react-router' {
       path: '/client-portal'
       fullPath: '/client-portal'
       preLoaderRoute: typeof AppClientPortalRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/audit': {
+      id: '/_app/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/apps': {
@@ -684,12 +968,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppResourcesIdRouteImport
       parentRoute: typeof AppResourcesRoute
     }
+    '/_app/reports/$id': {
+      id: '/_app/reports/$id'
+      path: '/$id'
+      fullPath: '/reports/$id'
+      preLoaderRoute: typeof AppReportsIdRouteImport
+      parentRoute: typeof AppReportsRoute
+    }
     '/_app/projects/$id': {
       id: '/_app/projects/$id'
       path: '/$id'
       fullPath: '/projects/$id'
       preLoaderRoute: typeof AppProjectsIdRouteImport
       parentRoute: typeof AppProjectsRoute
+    }
+    '/_app/meetings/$id': {
+      id: '/_app/meetings/$id'
+      path: '/$id'
+      fullPath: '/meetings/$id'
+      preLoaderRoute: typeof AppMeetingsIdRouteImport
+      parentRoute: typeof AppMeetingsRoute
+    }
+    '/_app/electrical/panels': {
+      id: '/_app/electrical/panels'
+      path: '/panels'
+      fullPath: '/electrical/panels'
+      preLoaderRoute: typeof AppElectricalPanelsRouteImport
+      parentRoute: typeof AppElectricalRoute
+    }
+    '/_app/electrical/load-calculations': {
+      id: '/_app/electrical/load-calculations'
+      path: '/load-calculations'
+      fullPath: '/electrical/load-calculations'
+      preLoaderRoute: typeof AppElectricalLoadCalculationsRouteImport
+      parentRoute: typeof AppElectricalRoute
+    }
+    '/_app/electrical/equipment': {
+      id: '/_app/electrical/equipment'
+      path: '/equipment'
+      fullPath: '/electrical/equipment'
+      preLoaderRoute: typeof AppElectricalEquipmentRouteImport
+      parentRoute: typeof AppElectricalRoute
     }
     '/_app/documents/$id': {
       id: '/_app/documents/$id'
@@ -698,8 +1017,188 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDocumentsIdRouteImport
       parentRoute: typeof AppDocumentsRoute
     }
+    '/_app/client-portal/submittals': {
+      id: '/_app/client-portal/submittals'
+      path: '/submittals'
+      fullPath: '/client-portal/submittals'
+      preLoaderRoute: typeof AppClientPortalSubmittalsRouteImport
+      parentRoute: typeof AppClientPortalRoute
+    }
+    '/_app/client-portal/rfi': {
+      id: '/_app/client-portal/rfi'
+      path: '/rfi'
+      fullPath: '/client-portal/rfi'
+      preLoaderRoute: typeof AppClientPortalRfiRouteImport
+      parentRoute: typeof AppClientPortalRoute
+    }
+    '/_app/client-portal/meetings': {
+      id: '/_app/client-portal/meetings'
+      path: '/meetings'
+      fullPath: '/client-portal/meetings'
+      preLoaderRoute: typeof AppClientPortalMeetingsRouteImport
+      parentRoute: typeof AppClientPortalRoute
+    }
+    '/_app/client-portal/invoices': {
+      id: '/_app/client-portal/invoices'
+      path: '/invoices'
+      fullPath: '/client-portal/invoices'
+      preLoaderRoute: typeof AppClientPortalInvoicesRouteImport
+      parentRoute: typeof AppClientPortalRoute
+    }
+    '/_app/client-portal/downloads': {
+      id: '/_app/client-portal/downloads'
+      path: '/downloads'
+      fullPath: '/client-portal/downloads'
+      preLoaderRoute: typeof AppClientPortalDownloadsRouteImport
+      parentRoute: typeof AppClientPortalRoute
+    }
+    '/_app/client-portal/documents': {
+      id: '/_app/client-portal/documents'
+      path: '/documents'
+      fullPath: '/client-portal/documents'
+      preLoaderRoute: typeof AppClientPortalDocumentsRouteImport
+      parentRoute: typeof AppClientPortalRoute
+    }
+    '/_app/client-portal/activity': {
+      id: '/_app/client-portal/activity'
+      path: '/activity'
+      fullPath: '/client-portal/activity'
+      preLoaderRoute: typeof AppClientPortalActivityRouteImport
+      parentRoute: typeof AppClientPortalRoute
+    }
+    '/_app/ai/suggestions': {
+      id: '/_app/ai/suggestions'
+      path: '/suggestions'
+      fullPath: '/ai/suggestions'
+      preLoaderRoute: typeof AppAiSuggestionsRouteImport
+      parentRoute: typeof AppAiRoute
+    }
+    '/_app/ai/jobs': {
+      id: '/_app/ai/jobs'
+      path: '/jobs'
+      fullPath: '/ai/jobs'
+      preLoaderRoute: typeof AppAiJobsRouteImport
+      parentRoute: typeof AppAiRoute
+    }
+    '/_app/ai/chat': {
+      id: '/_app/ai/chat'
+      path: '/chat'
+      fullPath: '/ai/chat'
+      preLoaderRoute: typeof AppAiChatRouteImport
+      parentRoute: typeof AppAiRoute
+    }
+    '/_app/electrical/panels/$id': {
+      id: '/_app/electrical/panels/$id'
+      path: '/$id'
+      fullPath: '/electrical/panels/$id'
+      preLoaderRoute: typeof AppElectricalPanelsIdRouteImport
+      parentRoute: typeof AppElectricalPanelsRoute
+    }
+    '/_app/electrical/load-calculations/$id': {
+      id: '/_app/electrical/load-calculations/$id'
+      path: '/$id'
+      fullPath: '/electrical/load-calculations/$id'
+      preLoaderRoute: typeof AppElectricalLoadCalculationsIdRouteImport
+      parentRoute: typeof AppElectricalLoadCalculationsRoute
+    }
+    '/_app/client-portal/rfi/$id': {
+      id: '/_app/client-portal/rfi/$id'
+      path: '/$id'
+      fullPath: '/client-portal/rfi/$id'
+      preLoaderRoute: typeof AppClientPortalRfiIdRouteImport
+      parentRoute: typeof AppClientPortalRfiRoute
+    }
+    '/_app/client-portal/invoices/$id': {
+      id: '/_app/client-portal/invoices/$id'
+      path: '/$id'
+      fullPath: '/client-portal/invoices/$id'
+      preLoaderRoute: typeof AppClientPortalInvoicesIdRouteImport
+      parentRoute: typeof AppClientPortalInvoicesRoute
+    }
+    '/_app/ai/chat/$id': {
+      id: '/_app/ai/chat/$id'
+      path: '/$id'
+      fullPath: '/ai/chat/$id'
+      preLoaderRoute: typeof AppAiChatIdRouteImport
+      parentRoute: typeof AppAiChatRoute
+    }
   }
 }
+
+interface AppAiChatRouteChildren {
+  AppAiChatIdRoute: typeof AppAiChatIdRoute
+}
+
+const AppAiChatRouteChildren: AppAiChatRouteChildren = {
+  AppAiChatIdRoute: AppAiChatIdRoute,
+}
+
+const AppAiChatRouteWithChildren = AppAiChatRoute._addFileChildren(
+  AppAiChatRouteChildren,
+)
+
+interface AppAiRouteChildren {
+  AppAiChatRoute: typeof AppAiChatRouteWithChildren
+  AppAiJobsRoute: typeof AppAiJobsRoute
+  AppAiSuggestionsRoute: typeof AppAiSuggestionsRoute
+}
+
+const AppAiRouteChildren: AppAiRouteChildren = {
+  AppAiChatRoute: AppAiChatRouteWithChildren,
+  AppAiJobsRoute: AppAiJobsRoute,
+  AppAiSuggestionsRoute: AppAiSuggestionsRoute,
+}
+
+const AppAiRouteWithChildren = AppAiRoute._addFileChildren(AppAiRouteChildren)
+
+interface AppClientPortalInvoicesRouteChildren {
+  AppClientPortalInvoicesIdRoute: typeof AppClientPortalInvoicesIdRoute
+}
+
+const AppClientPortalInvoicesRouteChildren: AppClientPortalInvoicesRouteChildren =
+  {
+    AppClientPortalInvoicesIdRoute: AppClientPortalInvoicesIdRoute,
+  }
+
+const AppClientPortalInvoicesRouteWithChildren =
+  AppClientPortalInvoicesRoute._addFileChildren(
+    AppClientPortalInvoicesRouteChildren,
+  )
+
+interface AppClientPortalRfiRouteChildren {
+  AppClientPortalRfiIdRoute: typeof AppClientPortalRfiIdRoute
+}
+
+const AppClientPortalRfiRouteChildren: AppClientPortalRfiRouteChildren = {
+  AppClientPortalRfiIdRoute: AppClientPortalRfiIdRoute,
+}
+
+const AppClientPortalRfiRouteWithChildren =
+  AppClientPortalRfiRoute._addFileChildren(AppClientPortalRfiRouteChildren)
+
+interface AppClientPortalRouteChildren {
+  AppClientPortalActivityRoute: typeof AppClientPortalActivityRoute
+  AppClientPortalDocumentsRoute: typeof AppClientPortalDocumentsRoute
+  AppClientPortalDownloadsRoute: typeof AppClientPortalDownloadsRoute
+  AppClientPortalInvoicesRoute: typeof AppClientPortalInvoicesRouteWithChildren
+  AppClientPortalMeetingsRoute: typeof AppClientPortalMeetingsRoute
+  AppClientPortalRfiRoute: typeof AppClientPortalRfiRouteWithChildren
+  AppClientPortalSubmittalsRoute: typeof AppClientPortalSubmittalsRoute
+}
+
+const AppClientPortalRouteChildren: AppClientPortalRouteChildren = {
+  AppClientPortalActivityRoute: AppClientPortalActivityRoute,
+  AppClientPortalDocumentsRoute: AppClientPortalDocumentsRoute,
+  AppClientPortalDownloadsRoute: AppClientPortalDownloadsRoute,
+  AppClientPortalInvoicesRoute: AppClientPortalInvoicesRouteWithChildren,
+  AppClientPortalMeetingsRoute: AppClientPortalMeetingsRoute,
+  AppClientPortalRfiRoute: AppClientPortalRfiRouteWithChildren,
+  AppClientPortalSubmittalsRoute: AppClientPortalSubmittalsRoute,
+}
+
+const AppClientPortalRouteWithChildren = AppClientPortalRoute._addFileChildren(
+  AppClientPortalRouteChildren,
+)
 
 interface AppDocumentsRouteChildren {
   AppDocumentsIdRoute: typeof AppDocumentsIdRoute
@@ -713,6 +1212,60 @@ const AppDocumentsRouteWithChildren = AppDocumentsRoute._addFileChildren(
   AppDocumentsRouteChildren,
 )
 
+interface AppElectricalLoadCalculationsRouteChildren {
+  AppElectricalLoadCalculationsIdRoute: typeof AppElectricalLoadCalculationsIdRoute
+}
+
+const AppElectricalLoadCalculationsRouteChildren: AppElectricalLoadCalculationsRouteChildren =
+  {
+    AppElectricalLoadCalculationsIdRoute: AppElectricalLoadCalculationsIdRoute,
+  }
+
+const AppElectricalLoadCalculationsRouteWithChildren =
+  AppElectricalLoadCalculationsRoute._addFileChildren(
+    AppElectricalLoadCalculationsRouteChildren,
+  )
+
+interface AppElectricalPanelsRouteChildren {
+  AppElectricalPanelsIdRoute: typeof AppElectricalPanelsIdRoute
+}
+
+const AppElectricalPanelsRouteChildren: AppElectricalPanelsRouteChildren = {
+  AppElectricalPanelsIdRoute: AppElectricalPanelsIdRoute,
+}
+
+const AppElectricalPanelsRouteWithChildren =
+  AppElectricalPanelsRoute._addFileChildren(AppElectricalPanelsRouteChildren)
+
+interface AppElectricalRouteChildren {
+  AppElectricalEquipmentRoute: typeof AppElectricalEquipmentRoute
+  AppElectricalLoadCalculationsRoute: typeof AppElectricalLoadCalculationsRouteWithChildren
+  AppElectricalPanelsRoute: typeof AppElectricalPanelsRouteWithChildren
+}
+
+const AppElectricalRouteChildren: AppElectricalRouteChildren = {
+  AppElectricalEquipmentRoute: AppElectricalEquipmentRoute,
+  AppElectricalLoadCalculationsRoute:
+    AppElectricalLoadCalculationsRouteWithChildren,
+  AppElectricalPanelsRoute: AppElectricalPanelsRouteWithChildren,
+}
+
+const AppElectricalRouteWithChildren = AppElectricalRoute._addFileChildren(
+  AppElectricalRouteChildren,
+)
+
+interface AppMeetingsRouteChildren {
+  AppMeetingsIdRoute: typeof AppMeetingsIdRoute
+}
+
+const AppMeetingsRouteChildren: AppMeetingsRouteChildren = {
+  AppMeetingsIdRoute: AppMeetingsIdRoute,
+}
+
+const AppMeetingsRouteWithChildren = AppMeetingsRoute._addFileChildren(
+  AppMeetingsRouteChildren,
+)
+
 interface AppProjectsRouteChildren {
   AppProjectsIdRoute: typeof AppProjectsIdRoute
 }
@@ -723,6 +1276,18 @@ const AppProjectsRouteChildren: AppProjectsRouteChildren = {
 
 const AppProjectsRouteWithChildren = AppProjectsRoute._addFileChildren(
   AppProjectsRouteChildren,
+)
+
+interface AppReportsRouteChildren {
+  AppReportsIdRoute: typeof AppReportsIdRoute
+}
+
+const AppReportsRouteChildren: AppReportsRouteChildren = {
+  AppReportsIdRoute: AppReportsIdRoute,
+}
+
+const AppReportsRouteWithChildren = AppReportsRoute._addFileChildren(
+  AppReportsRouteChildren,
 )
 
 interface AppResourcesRouteChildren {
@@ -774,20 +1339,22 @@ const AppTimesheetsRouteWithChildren = AppTimesheetsRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
-  AppAiRoute: typeof AppAiRoute
+  AppAiRoute: typeof AppAiRouteWithChildren
   AppAppsRoute: typeof AppAppsRoute
-  AppClientPortalRoute: typeof AppClientPortalRoute
+  AppAuditRoute: typeof AppAuditRoute
+  AppClientPortalRoute: typeof AppClientPortalRouteWithChildren
   AppDocumentsRoute: typeof AppDocumentsRouteWithChildren
+  AppElectricalRoute: typeof AppElectricalRouteWithChildren
   AppExecutiveRoute: typeof AppExecutiveRoute
   AppFinancialsRoute: typeof AppFinancialsRoute
   AppHrRoute: typeof AppHrRoute
   AppLeaveRoute: typeof AppLeaveRoute
-  AppMeetingsRoute: typeof AppMeetingsRoute
+  AppMeetingsRoute: typeof AppMeetingsRouteWithChildren
   AppNcrRoute: typeof AppNcrRoute
   AppPmRoute: typeof AppPmRoute
   AppProfileRoute: typeof AppProfileRoute
   AppProjectsRoute: typeof AppProjectsRouteWithChildren
-  AppReportsRoute: typeof AppReportsRoute
+  AppReportsRoute: typeof AppReportsRouteWithChildren
   AppResourcesRoute: typeof AppResourcesRouteWithChildren
   AppRfiRoute: typeof AppRfiRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRoute
@@ -800,20 +1367,22 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
-  AppAiRoute: AppAiRoute,
+  AppAiRoute: AppAiRouteWithChildren,
   AppAppsRoute: AppAppsRoute,
-  AppClientPortalRoute: AppClientPortalRoute,
+  AppAuditRoute: AppAuditRoute,
+  AppClientPortalRoute: AppClientPortalRouteWithChildren,
   AppDocumentsRoute: AppDocumentsRouteWithChildren,
+  AppElectricalRoute: AppElectricalRouteWithChildren,
   AppExecutiveRoute: AppExecutiveRoute,
   AppFinancialsRoute: AppFinancialsRoute,
   AppHrRoute: AppHrRoute,
   AppLeaveRoute: AppLeaveRoute,
-  AppMeetingsRoute: AppMeetingsRoute,
+  AppMeetingsRoute: AppMeetingsRouteWithChildren,
   AppNcrRoute: AppNcrRoute,
   AppPmRoute: AppPmRoute,
   AppProfileRoute: AppProfileRoute,
   AppProjectsRoute: AppProjectsRouteWithChildren,
-  AppReportsRoute: AppReportsRoute,
+  AppReportsRoute: AppReportsRouteWithChildren,
   AppResourcesRoute: AppResourcesRouteWithChildren,
   AppRfiRoute: AppRfiRouteWithChildren,
   AppSettingsRoute: AppSettingsRoute,

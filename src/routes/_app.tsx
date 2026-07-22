@@ -31,7 +31,7 @@ function AppShell() {
   // While Clerk is still loading, render nothing to avoid flash
   if (!isLoaded) return null;
 
-  // Route-level RBAC: if the user's role doesn't allow this path, redirect
+  // Route-level RBAC (authenticated app layout only — auth pages are separate routes)
   if (!canAccess(role, base)) {
     return <Navigate to="/unauthorized" />;
   }

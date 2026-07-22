@@ -37,6 +37,7 @@ export interface RFIView {
   closed_at: string | null;
   reopened_at: string | null;
   void_reason: string | null;
+  client_visible: boolean;
   created_at: string;
   updated_at: string;
   created_by: string | null;

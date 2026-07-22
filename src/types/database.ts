@@ -115,6 +115,8 @@ export interface Profile {
   onboarding_done: boolean;
   /** Added by Phase 5 migration — links Clerk identity to this profile row. */
   clerk_user_id: string | null;
+  /** Phase 15D — links Client-role users to the clients table for portal scoping. */
+  client_id: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -334,6 +336,8 @@ export interface Submittal {
   submitted_by: string | null;
   reviewer_id: string | null;
   description: string | null;
+  /** Phase 15D — when true, client users linked to the project may view this submittal. */
+  client_visible: boolean;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -429,6 +433,8 @@ export interface RFI {
   reopened_at: string | null;
   /** Phase 8: required when Admin voids an RFI. */
   void_reason: string | null;
+  /** Phase 15D — when true, client users linked to the project may view this RFI. */
+  client_visible: boolean;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -874,6 +880,73 @@ export interface Payment {
 
 export type PaymentInsert = Omit<Payment, "id" | "created_at" | "updated_at">;
 
+// ─── Phase 15D: Client Portal ────────────────────────────────────────────────
+
+export type ClientPortalTab =
+  | "dashboard"
+  | "documents"
+  | "rfi"
+  | "submittals"
+  | "invoices"
+  | "activity"
+  | "meetings"
+  | "downloads";
+
+export type ClientDownloadEntityType = "document" | "invoice" | "report" | "other";
+
+export interface ClientPortalPreferences {
+  id: string;
+  organization_id: string;
+  profile_id: string;
+  default_tab: ClientPortalTab;
+  notification_opt_in: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ClientPortalPreferencesInsert = Omit<
+  ClientPortalPreferences,
+  "id" | "created_at" | "updated_at"
+>;
+export type ClientPortalPreferencesUpdate = Partial<
+  Pick<ClientPortalPreferences, "default_tab" | "notification_opt_in">
+>;
+
+export interface ClientDownloadLog {
+  id: string;
+  organization_id: string;
+  profile_id: string;
+  entity_type: ClientDownloadEntityType;
+  entity_id: string;
+  file_name: string;
+  downloaded_at: string;
+  ip_metadata: Record<string, unknown>;
+}
+
+export type ClientDownloadLogInsert = Omit<ClientDownloadLog, "id" | "downloaded_at">;
+
+export interface ClientPortalAnnouncement {
+  id: string;
+  organization_id: string;
+  title: string;
+  message: string;
+  starts_at: string;
+  ends_at: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type ClientPortalAnnouncementInsert = Omit<
+  ClientPortalAnnouncement,
+  "id" | "created_at" | "updated_at" | "deleted_at"
+>;
+export type ClientPortalAnnouncementUpdate = Partial<
+  Omit<ClientPortalAnnouncementInsert, "organization_id">
+>;
+
 // ─── Supabase Database interface ──────────────────────────────────────────────
 // This is the generic type parameter for createClient<Database>().
 // Each table maps to its Row / Insert / Update tuple.
@@ -1086,9 +1159,148 @@ export interface Database {
         Insert: Omit<NotificationDelivery, "id">;
         Update: Partial<NotificationDelivery>;
       };
+      saved_reports: {
+        Row: SavedReport;
+        Insert: SavedReportInsert;
+        Update: SavedReportUpdate;
+      };
+      report_runs: {
+        Row: ReportRun;
+        Insert: ReportRunInsert;
+        Update: ReportRunUpdate;
+      };
+      dashboard_preferences: {
+        Row: DashboardPreference;
+        Insert: DashboardPreferenceInsert;
+        Update: DashboardPreferenceUpdate;
+      };
+      system_metrics: {
+        Row: SystemMetric;
+        Insert: SystemMetricInsert;
+        Update: Partial<SystemMetricInsert>;
+      };
+      analytics_snapshots: {
+        Row: AnalyticsSnapshot;
+        Insert: AnalyticsSnapshotInsert;
+        Update: Partial<AnalyticsSnapshotInsert>;
+      };
+      threshold_rules: {
+        Row: ThresholdRule;
+        Insert: ThresholdRuleInsert;
+        Update: ThresholdRuleUpdate;
+      };
+      meetings: {
+        Row: Meeting;
+        Insert: MeetingInsert;
+        Update: MeetingUpdate;
+      };
+      meeting_attendees: {
+        Row: MeetingAttendee;
+        Insert: MeetingAttendeeInsert;
+        Update: MeetingAttendeeUpdate;
+      };
+      meeting_action_items: {
+        Row: MeetingActionItem;
+        Insert: MeetingActionItemInsert;
+        Update: MeetingActionItemUpdate;
+      };
+      panel_schedules: {
+        Row: PanelSchedule;
+        Insert: PanelScheduleInsert;
+        Update: PanelScheduleUpdate;
+      };
+      circuits: {
+        Row: Circuit;
+        Insert: CircuitInsert;
+        Update: CircuitUpdate;
+      };
+      load_calculations: {
+        Row: LoadCalculation;
+        Insert: LoadCalculationInsert;
+        Update: LoadCalculationUpdate;
+      };
+      equipment_lists: {
+        Row: EquipmentList;
+        Insert: EquipmentListInsert;
+        Update: EquipmentListUpdate;
+      };
+      electrical_revisions: {
+        Row: ElectricalRevision;
+        Insert: ElectricalRevisionInsert;
+        Update: Partial<ElectricalRevisionInsert>;
+      };
+      chat_sessions: {
+        Row: ChatSession;
+        Insert: ChatSessionInsert;
+        Update: ChatSessionUpdate;
+      };
+      conversation_contexts: {
+        Row: ConversationContext;
+        Insert: ConversationContextInsert;
+        Update: Partial<ConversationContextInsert>;
+      };
+      chat_messages: {
+        Row: ChatMessage;
+        Insert: ChatMessageInsert;
+        Update: never;
+      };
+      document_chunks: {
+        Row: DocumentChunk;
+        Insert: DocumentChunkInsert;
+        Update: DocumentChunkUpdate;
+      };
+      embedding_jobs: {
+        Row: EmbeddingJob;
+        Insert: EmbeddingJobInsert;
+        Update: EmbeddingJobUpdate;
+      };
+      ai_suggestions: {
+        Row: AISuggestion;
+        Insert: AISuggestionInsert;
+        Update: AISuggestionUpdate;
+      };
+      ai_usage_metrics: {
+        Row: AIUsageMetric;
+        Insert: AIUsageMetricInsert;
+        Update: never;
+      };
+      client_portal_preferences: {
+        Row: ClientPortalPreferences;
+        Insert: ClientPortalPreferencesInsert;
+        Update: ClientPortalPreferencesUpdate;
+      };
+      client_download_logs: {
+        Row: ClientDownloadLog;
+        Insert: ClientDownloadLogInsert;
+        Update: never;
+      };
+      client_portal_announcements: {
+        Row: ClientPortalAnnouncement;
+        Insert: ClientPortalAnnouncementInsert;
+        Update: ClientPortalAnnouncementUpdate;
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      bootstrap_first_user: {
+        Args: {
+          p_clerk_user_id: string;
+          p_email: string;
+          p_full_name: string;
+          p_company_name: string;
+          p_role?: UserRole;
+        };
+        Returns: {
+          profile_id: string;
+          organization_id: string;
+          role: UserRole;
+          email: string;
+          full_name: string;
+          created: boolean;
+          organization_created: boolean;
+        };
+      };
+    };
     Enums: {
       user_role: UserRole;
       project_status: ProjectStatus;
@@ -1210,3 +1422,610 @@ export interface NotificationDelivery {
   delivered_at: string | null;
   error_message: string | null;
 }
+
+// ─── Phase 14: Analytics, Reports & Enterprise Intelligence ───────────────────
+
+export type ReportVisibility = "private" | "org_shared" | "executive_shared" | "admin_only";
+
+export type ReportCategory =
+  | "operational"
+  | "financial"
+  | "workforce"
+  | "compliance"
+  | "executive"
+  | "system"
+  | "future";
+
+export type ReportType =
+  | "projects"
+  | "documents"
+  | "submittals"
+  | "rfi"
+  | "ncr"
+  | "resources"
+  | "timesheets"
+  | "leave"
+  | "financials"
+  | "notifications"
+  | "activity"
+  | "audit"
+  | "meetings"
+  | "electrical"
+  | "ai"
+  | "client_portal"
+  | "saas_billing"
+  | "super_admin"
+  | "system_health";
+
+export type ReportFormat = "csv" | "xlsx" | "pdf" | "json";
+
+export type ReportRunStatus = "queued" | "running" | "completed" | "failed";
+
+export type DashboardType = "executive" | "pm" | "hr" | "personal";
+
+export type SnapshotType = "daily" | "weekly" | "monthly";
+
+export type ThresholdOperator = "gt" | "gte" | "lt" | "lte" | "eq";
+
+export interface SavedReport {
+  id: string;
+  organization_id: string;
+  profile_id: string;
+  name: string;
+  description: string | null;
+  report_type: ReportType;
+  report_category: ReportCategory;
+  entity_type: string | null;
+  filters: Record<string, unknown>;
+  columns: string[];
+  sort: Record<string, unknown>;
+  schedule: Record<string, unknown> | null;
+  visibility: ReportVisibility;
+  version_number: number;
+  parent_report_id: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type SavedReportInsert = Omit<
+  SavedReport,
+  "id" | "created_at" | "updated_at" | "deleted_at" | "version_number"
+> & { version_number?: number };
+
+export type SavedReportUpdate = Partial<
+  Pick<
+    SavedReport,
+    | "name"
+    | "description"
+    | "report_type"
+    | "report_category"
+    | "entity_type"
+    | "filters"
+    | "columns"
+    | "sort"
+    | "schedule"
+    | "visibility"
+    | "version_number"
+    | "parent_report_id"
+    | "deleted_at"
+  >
+>;
+
+export interface ReportRun {
+  id: string;
+  organization_id: string;
+  saved_report_id: string | null;
+  requested_by: string;
+  report_type: ReportType;
+  format: ReportFormat;
+  status: ReportRunStatus;
+  file_path: string | null;
+  row_count: number;
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+  created_at: string;
+}
+
+export type ReportRunInsert = Omit<ReportRun, "id" | "created_at">;
+
+export type ReportRunUpdate = Partial<
+  Pick<
+    ReportRun,
+    "status" | "file_path" | "row_count" | "started_at" | "completed_at" | "error_message"
+  >
+>;
+
+export interface DashboardPreference {
+  id: string;
+  organization_id: string;
+  profile_id: string;
+  dashboard_type: DashboardType;
+  layout: string[];
+  favorite_widgets: string[];
+  hidden_widgets: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export type DashboardPreferenceInsert = Omit<
+  DashboardPreference,
+  "id" | "created_at" | "updated_at"
+>;
+
+export type DashboardPreferenceUpdate = Partial<
+  Pick<DashboardPreference, "layout" | "favorite_widgets" | "hidden_widgets">
+>;
+
+export interface SystemMetric {
+  id: string;
+  organization_id: string;
+  metric_name: string;
+  metric_category: string;
+  metric_value: number;
+  metadata: Record<string, unknown>;
+  captured_at: string;
+  created_at: string;
+}
+
+export type SystemMetricInsert = Omit<SystemMetric, "id" | "created_at">;
+
+export interface AnalyticsSnapshot {
+  id: string;
+  organization_id: string;
+  snapshot_type: SnapshotType;
+  period_start: string;
+  period_end: string;
+  data: Record<string, unknown>;
+  created_at: string;
+}
+
+export type AnalyticsSnapshotInsert = Omit<AnalyticsSnapshot, "id" | "created_at">;
+
+export interface ThresholdRule {
+  id: string;
+  organization_id: string;
+  profile_id: string | null;
+  metric_name: string;
+  metric_category: string;
+  operator: ThresholdOperator;
+  threshold_value: number;
+  severity: NotificationSeverity;
+  notify_roles: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type ThresholdRuleInsert = Omit<
+  ThresholdRule,
+  "id" | "created_at" | "updated_at" | "deleted_at"
+>;
+
+export type ThresholdRuleUpdate = Partial<
+  Pick<
+    ThresholdRule,
+    | "metric_name"
+    | "metric_category"
+    | "operator"
+    | "threshold_value"
+    | "severity"
+    | "notify_roles"
+    | "is_active"
+    | "deleted_at"
+  >
+>;
+
+// ─── Phase 15A: Meetings & Action Items ───────────────────────────────────────
+
+export type MeetingStatus = "draft" | "scheduled" | "completed" | "cancelled" | "archived";
+
+export type MeetingType =
+  | "standup"
+  | "coordination"
+  | "design_review"
+  | "client"
+  | "kickoff"
+  | "closeout"
+  | "other";
+
+export type MeetingVisibility = "internal" | "client_visible";
+
+export type AttendeeRole = "chair" | "attendee" | "optional" | "recorder";
+
+export type AttendeeResponseStatus = "pending" | "accepted" | "declined" | "tentative";
+
+export type ActionItemStatus = "open" | "in_progress" | "completed" | "cancelled";
+
+export type ActionItemPriority = "low" | "normal" | "high" | "critical";
+
+export interface Meeting {
+  id: string;
+  organization_id: string;
+  project_id: string | null;
+  title: string;
+  meeting_type: MeetingType;
+  status: MeetingStatus;
+  visibility: MeetingVisibility;
+  scheduled_start: string;
+  scheduled_end: string;
+  location: string | null;
+  video_link: string | null;
+  agenda: string | null;
+  minutes: string | null;
+  cancel_reason: string | null;
+  created_by: string | null;
+  chair_profile_id: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type MeetingInsert = Omit<Meeting, "id" | "created_at" | "updated_at" | "deleted_at">;
+
+export type MeetingUpdate = Partial<Omit<MeetingInsert, "organization_id" | "created_by">>;
+
+export interface MeetingAttendee {
+  id: string;
+  organization_id: string;
+  meeting_id: string;
+  profile_id: string | null;
+  external_name: string | null;
+  external_email: string | null;
+  role: AttendeeRole;
+  response_status: AttendeeResponseStatus;
+  attended: boolean;
+  created_at: string;
+  deleted_at: string | null;
+}
+
+export type MeetingAttendeeInsert = Omit<MeetingAttendee, "id" | "created_at" | "deleted_at">;
+
+export type MeetingAttendeeUpdate = Partial<
+  Omit<MeetingAttendeeInsert, "organization_id" | "meeting_id">
+>;
+
+export interface MeetingActionItem {
+  id: string;
+  organization_id: string;
+  meeting_id: string;
+  project_id: string | null;
+  title: string;
+  description: string | null;
+  assigned_to: string | null;
+  due_date: string | null;
+  status: ActionItemStatus;
+  priority: ActionItemPriority;
+  completed_at: string | null;
+  completed_by: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type MeetingActionItemInsert = Omit<
+  MeetingActionItem,
+  "id" | "created_at" | "updated_at" | "deleted_at"
+>;
+
+export type MeetingActionItemUpdate = Partial<
+  Omit<MeetingActionItemInsert, "organization_id" | "meeting_id" | "created_by">
+>;
+
+// ─── Phase 15B: Electrical Engineering ───────────────────────────────────────
+
+export type ElectricalWorkflowStatus =
+  | "draft"
+  | "under_review"
+  | "approved"
+  | "rejected"
+  | "archived";
+
+export type CircuitSide = "left" | "right" | "both" | "na";
+
+export type LoadCalculationType =
+  | "service_load"
+  | "feeder_load"
+  | "panel_load"
+  | "equipment_load"
+  | "other";
+
+export type EquipmentStatus = "active" | "inactive" | "archived";
+
+export interface PanelSchedule {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  panel_name: string;
+  panel_type: string;
+  voltage: number;
+  phase: "single" | "three";
+  location: string | null;
+  fed_from: string | null;
+  main_breaker_size: number | null;
+  bus_rating: number | null;
+  mounting: string | null;
+  enclosure_type: string | null;
+  status: ElectricalWorkflowStatus;
+  revision_number: number;
+  previous_status: string | null;
+  created_by: string | null;
+  updated_by: string | null;
+  reviewed_by: string | null;
+  approved_by: string | null;
+  reviewed_at: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type PanelScheduleInsert = Omit<
+  PanelSchedule,
+  "id" | "created_at" | "updated_at" | "deleted_at"
+>;
+
+export type PanelScheduleUpdate = Partial<
+  Omit<PanelScheduleInsert, "organization_id" | "created_by">
+>;
+
+export interface Circuit {
+  id: string;
+  organization_id: string;
+  panel_schedule_id: string;
+  circuit_number: string;
+  circuit_side: CircuitSide;
+  description: string | null;
+  load_va: number;
+  breaker_size: number | null;
+  poles: number | null;
+  phase: string | null;
+  wire_size: string | null;
+  conduit_size: string | null;
+  voltage: number | null;
+  remarks: string | null;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type CircuitInsert = Omit<Circuit, "id" | "created_at" | "updated_at" | "deleted_at">;
+
+export type CircuitUpdate = Partial<Omit<CircuitInsert, "organization_id" | "panel_schedule_id">>;
+
+export interface LoadCalculation {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  calculation_name: string;
+  calculation_type: LoadCalculationType;
+  source_panel_id: string | null;
+  total_connected_load_va: number;
+  demand_factor: number;
+  demand_load_va: number | null;
+  voltage: number;
+  phase: "single" | "three";
+  calculated_current_a: number | null;
+  source_panel_revision: number | null;
+  status: ElectricalWorkflowStatus;
+  revision_number: number;
+  previous_status: string | null;
+  created_by: string | null;
+  updated_by: string | null;
+  reviewed_by: string | null;
+  approved_by: string | null;
+  reviewed_at: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type LoadCalculationInsert = Omit<
+  LoadCalculation,
+  "id" | "created_at" | "updated_at" | "deleted_at"
+>;
+
+export type LoadCalculationUpdate = Partial<
+  Omit<LoadCalculationInsert, "organization_id" | "created_by">
+>;
+
+export interface EquipmentList {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  tag: string;
+  equipment_type: string;
+  description: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  voltage: number | null;
+  phase: "single" | "three" | null;
+  load_va: number;
+  location: string | null;
+  status: EquipmentStatus;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type EquipmentListInsert = Omit<
+  EquipmentList,
+  "id" | "created_at" | "updated_at" | "deleted_at"
+>;
+
+export type EquipmentListUpdate = Partial<
+  Omit<EquipmentListInsert, "organization_id" | "created_by">
+>;
+
+export interface ElectricalRevision {
+  id: string;
+  organization_id: string;
+  entity_type: "panel_schedule" | "load_calculation";
+  entity_id: string;
+  revision_number: number;
+  change_summary: string;
+  changed_by: string | null;
+  created_at: string;
+}
+
+export type ElectricalRevisionInsert = Omit<ElectricalRevision, "id" | "created_at">;
+
+// ─── Phase 15C: AI Copilot ────────────────────────────────────────────────────
+
+export type ChatMessageRole = "user" | "assistant" | "system";
+
+export type ChatSessionContextType =
+  | "general"
+  | "project"
+  | "document"
+  | "submittal"
+  | "rfi"
+  | "ncr"
+  | "meeting"
+  | "load_calculation";
+
+export type EmbeddingChunkStatus = "pending" | "queued" | "indexed" | "failed" | "stale";
+
+export type EmbeddingJobStatus = "queued" | "running" | "completed" | "failed";
+
+export type EmbeddingJobSourceType = "document" | "document_version" | "project" | "manual";
+
+export type AISuggestionType =
+  | "document_summary"
+  | "submittal_review"
+  | "rfi_summary"
+  | "ncr_summary"
+  | "meeting_summary"
+  | "load_calculation_summary"
+  | "timesheet_summary"
+  | "financial_summary";
+
+export type AISuggestionStatus = "pending" | "accepted" | "rejected" | "dismissed";
+
+export type AIUsageEventType =
+  | "chat_message"
+  | "embedding_job"
+  | "suggestion_review"
+  | "chunk_search"
+  | "provider_call";
+
+export interface ChatSession {
+  id: string;
+  organization_id: string;
+  profile_id: string;
+  title: string;
+  context_type: ChatSessionContextType | null;
+  context_id: string | null;
+  attachment_document_id: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export type ChatSessionInsert = Omit<
+  ChatSession,
+  "id" | "created_at" | "updated_at" | "deleted_at"
+>;
+export type ChatSessionUpdate = Partial<Omit<ChatSessionInsert, "organization_id" | "profile_id">>;
+
+export interface ConversationContext {
+  id: string;
+  organization_id: string;
+  chat_session_id: string;
+  context_type: ChatSessionContextType;
+  context_id: string;
+  label: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export type ConversationContextInsert = Omit<ConversationContext, "id" | "created_at">;
+
+export interface ChatMessage {
+  id: string;
+  organization_id: string;
+  chat_session_id: string;
+  role: ChatMessageRole;
+  content: string;
+  citations: unknown[];
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export type ChatMessageInsert = Omit<ChatMessage, "id" | "created_at">;
+
+export interface DocumentChunk {
+  id: string;
+  organization_id: string;
+  document_id: string;
+  document_version_id: string;
+  chunk_index: number;
+  content: string;
+  metadata: Record<string, unknown>;
+  embedding_status: EmbeddingChunkStatus;
+  created_at: string;
+  deleted_at: string | null;
+}
+
+export type DocumentChunkInsert = Omit<DocumentChunk, "id" | "created_at" | "deleted_at">;
+export type DocumentChunkUpdate = Partial<Omit<DocumentChunkInsert, "organization_id">>;
+
+export interface EmbeddingJob {
+  id: string;
+  organization_id: string;
+  source_type: EmbeddingJobSourceType;
+  source_id: string;
+  status: EmbeddingJobStatus;
+  error_message: string | null;
+  queue_metadata: Record<string, unknown>;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export type EmbeddingJobInsert = Omit<EmbeddingJob, "id" | "created_at">;
+export type EmbeddingJobUpdate = Partial<Omit<EmbeddingJobInsert, "organization_id">>;
+
+export interface AISuggestion {
+  id: string;
+  organization_id: string;
+  suggestion_type: AISuggestionType;
+  entity_type: string;
+  entity_id: string;
+  title: string;
+  content: string;
+  confidence: number | null;
+  status: AISuggestionStatus;
+  created_by_ai: boolean;
+  reviewed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AISuggestionInsert = Omit<AISuggestion, "id" | "created_at" | "updated_at">;
+export type AISuggestionUpdate = Partial<Omit<AISuggestionInsert, "organization_id">>;
+
+export interface AIUsageMetric {
+  id: string;
+  organization_id: string;
+  profile_id: string | null;
+  event_type: AIUsageEventType;
+  provider_id: string | null;
+  model: string | null;
+  tokens_in: number;
+  tokens_out: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export type AIUsageMetricInsert = Omit<AIUsageMetric, "id" | "created_at">;

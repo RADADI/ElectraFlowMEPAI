@@ -53,6 +53,7 @@ import { ProjectFormModal } from "@/components/projects/ProjectFormModal";
 import { useProjects, useArchiveProject } from "@/hooks/api/useProjects";
 import { useAuth } from "@/contexts/auth-context";
 import { IS_SUPABASE_CONFIGURED } from "@/lib/supabase";
+import { IS_CLERK_CONFIGURED } from "@/lib/auth-diagnostics";
 import { formatMoney, formatDate } from "@/lib/format";
 import type { ProjectView } from "@/types/project-view";
 import { toast } from "sonner";
@@ -223,9 +224,13 @@ function ProjectsPage() {
       {(!IS_SUPABASE_CONFIGURED || !isJwtReady) && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
           <Info className="h-4 w-4 shrink-0" />
-          {IS_SUPABASE_CONFIGURED && !isJwtReady
-            ? "Supabase is configured, but authenticated database access is not connected yet. Using mock data."
-            : "Demo mode — changes are temporary and disappear after refresh."}
+          {isDemo
+            ? "Demo mode — changes are temporary and disappear after refresh. Sign in with Clerk for live database access."
+            : !IS_CLERK_CONFIGURED && IS_SUPABASE_CONFIGURED
+              ? "Supabase is configured, but VITE_CLERK_PUBLISHABLE_KEY is missing. Add it to .env.local and restart the dev server."
+              : IS_SUPABASE_CONFIGURED && !isJwtReady
+                ? "Supabase is configured, but authenticated database access is not connected yet. Sign in with Clerk (not Demo Login) and ensure your profile exists in Supabase."
+                : "Demo mode — changes are temporary and disappear after refresh."}
         </div>
       )}
 

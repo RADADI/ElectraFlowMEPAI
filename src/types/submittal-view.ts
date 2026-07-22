@@ -31,6 +31,7 @@ export interface SubmittalView {
   submitted_by: string | null;
   reviewer_id: string | null;
   description: string | null;
+  client_visible: boolean;
   created_at: string;
   updated_at: string;
   created_by: string | null;

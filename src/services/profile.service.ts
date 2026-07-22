@@ -25,6 +25,7 @@ function buildMockProfile(): Profile {
     is_active: true,
     onboarding_done: true,
     clerk_user_id: null,
+    client_id: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     deleted_at: null,

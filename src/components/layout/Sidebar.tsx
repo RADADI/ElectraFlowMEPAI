@@ -22,6 +22,7 @@ import {
   Clock,
   CalendarOff,
   Activity,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { canAccess } from "@/lib/permissions";
@@ -44,7 +45,9 @@ export const navItems = [
   { to: "/rfi", label: "RFI", icon: MessageSquare },
   { to: "/ncr", label: "NCR", icon: AlertTriangle },
   { to: "/meetings", label: "Meetings", icon: ClipboardList },
+  { to: "/electrical", label: "Electrical", icon: Zap },
   { to: "/reports", label: "Reports", icon: FileBarChart },
+  { to: "/audit", label: "Audit Explorer", icon: Shield },
   { to: "/client-portal", label: "Client Portal", icon: UserSquare2 },
   { to: "/users", label: "Users", icon: UserCog },
   { to: "/activity", label: "Activity Center", icon: Activity },

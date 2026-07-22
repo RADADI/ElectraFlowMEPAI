@@ -81,3 +81,36 @@ export async function listAuditLogs(limit = 50): Promise<ServiceResult<AuditLog[
     return fail<AuditLog[]>(err);
   }
 }
+
+/** List audit logs for a specific resource — used by meeting timeline. */
+export async function listAuditLogsForResource(
+  resourceType: string,
+  resourceId: string,
+  limit = 50,
+): Promise<ServiceResult<AuditLog[]>> {
+  if (!IS_SUPABASE_CONFIGURED || !supabase) {
+    const items = MOCK_LOG.filter(
+      (l) => l.resource_type === resourceType && l.resource_id === resourceId,
+    ).slice(0, limit);
+    return mockOk(items);
+  }
+
+  const { organizationId } = getSessionContext();
+  if (!organizationId) return mockOk([]);
+
+  try {
+    const { data, error } = await supabase
+      .from("audit_logs")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .eq("resource_type", resourceType)
+      .eq("resource_id", resourceId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) return fail<AuditLog[]>(error);
+    return ok(data as AuditLog[]);
+  } catch (err) {
+    return fail<AuditLog[]>(err);
+  }
+}
