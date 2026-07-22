@@ -1,8 +1,16 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useUser, useClerk, useSession } from "@clerk/react";
 import type { AppRole } from "@/lib/permissions";
+import { normalizeAppRole } from "@/lib/permissions";
 import { setClerkTokenGetter, setJwtReady } from "@/lib/supabase";
 import { setCachedProfile, clearCachedProfile, bootstrapProfile } from "@/lib/auth-bridge";
+import {
+  IS_CLERK_CONFIGURED,
+  logAuthBridgeReady,
+  logClerkSessionDiagnostics,
+  logProfileBootstrapResult,
+  logSupabaseJwtDiagnostics,
+} from "@/lib/auth-diagnostics";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -381,6 +389,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
   const [jwtReady, setJwtReadyState] = useState(false);
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>("idle");
   const [bootstrapError, setBootstrapError] = useState<string>("");
+  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
 
   // Refresh on mock auth changes (e.g. demo login alongside Clerk)
   const [, setTick] = useState(0);
@@ -397,7 +406,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
     if (!isLoaded) return;
 
     if (!isSignedIn || !session || !user) {
-      // Signed out — clear everything
+      logClerkSessionDiagnostics(false);
       setClerkTokenGetter(null);
       setJwtReady(false);
       setJwtReadyState(false);
@@ -407,60 +416,95 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Wire the Clerk token getter so every Supabase request gets a fresh JWT.
-    // session.getToken() handles Clerk-side caching and refresh transparently.
-    setClerkTokenGetter(() => session.getToken({ template: "supabase" }));
+    logClerkSessionDiagnostics(true);
 
-    // Bootstrap profile: fetch from DB; auto-create if first login.
-    setProfileStatus("loading");
-    setBootstrapError("");
+    let cancelled = false;
 
+    const clerkUserId = user.id;
+    const email = user.primaryEmailAddress?.emailAddress ?? "";
+    const fullName =
+      user.fullName ?? user.primaryEmailAddress?.emailAddress?.split("@")[0] ?? "User";
     const orgIdFromMetadata =
       (user.publicMetadata?.organization_id as string | undefined)?.trim() || null;
 
-    bootstrapProfile({
-      clerkUserId: user.id,
-      email: user.primaryEmailAddress?.emailAddress ?? "",
-      fullName: user.fullName ?? user.primaryEmailAddress?.emailAddress?.split("@")[0] ?? "User",
-      orgIdFromMetadata,
-    })
-      .then((result) => {
-        if (result.ok && result.profile) {
-          // Cache the DB-authoritative profile values
-          setCachedProfile(result.profile);
+    // Wire Clerk token getter before any Supabase request (RLS needs Bearer JWT).
+    setClerkTokenGetter(async () => {
+      try {
+        return await session.getToken({ template: "supabase" });
+      } catch {
+        return null;
+      }
+    });
 
-          // Sync the DB role to localStorage so the existing RBAC engine
-          // (which reads localStorage via getStoredRole()) uses the DB value.
-          // This is the ONLY time we write role to localStorage from DB.
-          setStoredRole(result.profile.role);
-          notifyAuthChange();
+    setProfileStatus("loading");
+    setBootstrapError("");
+    setJwtReady(false);
+    setJwtReadyState(false);
+    clearCachedProfile();
 
-          // Signal to the project service that real DB ops are now available
-          setJwtReady(true);
-          setJwtReadyState(true);
-          setProfileStatus("ok");
-        } else {
-          setBootstrapError(result.error ?? "Unknown error");
-          setProfileStatus(result.reason ?? "error");
-          // Leave mep-role as the temporary placeholder — user sees error screen,
-          // not the app, so there's no RBAC risk.
-        }
-      })
-      .catch((err: unknown) => {
+    void (async () => {
+      // Acquire JWT first — bootstrap must not run with anon-only requests.
+      let token: string | null = null;
+      try {
+        token = await session.getToken({ template: "supabase" });
+      } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        setBootstrapError(msg);
+        logSupabaseJwtDiagnostics(false, `getToken failed: ${msg}`);
+        if (cancelled) return;
+        setBootstrapError(
+          `Could not obtain Supabase JWT from Clerk: ${msg}. Verify the JWT template is named "supabase".`,
+        );
         setProfileStatus("error");
+        return;
+      }
+
+      logSupabaseJwtDiagnostics(!!token);
+
+      if (cancelled) return;
+
+      if (!token) {
+        setBootstrapError(
+          'Clerk returned no Supabase JWT. Confirm a JWT template named "supabase" exists in Clerk Dashboard → JWT Templates.',
+        );
+        setProfileStatus("error");
+        return;
+      }
+
+      const result = await bootstrapProfile({
+        clerkUserId,
+        email,
+        fullName,
+        orgIdFromMetadata,
+        companyName: getStoredUser()?.company ?? null,
+        selectedRole: getStoredRole(),
       });
 
+      if (cancelled) return;
+
+      if (result.ok && result.profile) {
+        setCachedProfile(result.profile);
+        setStoredRole(normalizeAppRole(result.profile.role) ?? "Electrical Engineer");
+        notifyAuthChange();
+        setJwtReady(true);
+        setJwtReadyState(true);
+        setProfileStatus("ok");
+        logProfileBootstrapResult(true);
+        logAuthBridgeReady();
+      } else {
+        const msg = result.error ?? "Unknown error";
+        setBootstrapError(msg);
+        setProfileStatus(result.reason ?? "error");
+        logProfileBootstrapResult(false, result.reason, msg);
+      }
+    })();
+
     return () => {
-      // Clean up on unmount or when the session changes
+      cancelled = true;
       setClerkTokenGetter(null);
-      setJwtReady(false);
-      setJwtReadyState(false);
-      clearCachedProfile();
     };
+    // session/user objects change every render; session?.id + user?.id are stable identity keys.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn, session?.id]);
+  }, [isLoaded, isSignedIn, session?.id, user?.id, bootstrapAttempt]);
 
   // ── Phase 5: Ensure mep-role is set while bootstrap is loading ────────────
   // The _app.tsx beforeLoad guard checks localStorage("mep-role").
@@ -468,7 +512,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
   // every time (because mep-role is cleared on sign-out).
   // Set a minimum-privilege placeholder; the bootstrap replaces it with the DB role.
   if (isLoaded && isSignedIn && typeof window !== "undefined" && !localStorage.getItem(ROLE_KEY)) {
-    localStorage.setItem(ROLE_KEY, "electrical_engineer");
+    localStorage.setItem(ROLE_KEY, "Electrical Engineer");
   }
 
   // ── Handle blocking states (shown instead of the app) ─────────────────────
@@ -535,10 +579,9 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
           "Failed to load your account profile. Check your network connection and try again."
         }
         onRetry={() => {
-          setProfileStatus("idle");
           setBootstrapError("");
-          // Re-trigger the bootstrap effect
-          setTick((t) => t + 1);
+          setProfileStatus("loading");
+          setBootstrapAttempt((n) => n + 1);
         }}
         onSignOut={doSignOut}
       />
@@ -547,7 +590,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
 
   // ── Derive display values ─────────────────────────────────────────────────
   const storedUser = getStoredUser();
-  const role = getStoredRole(); // DB role synced here on bootstrap success
+  const role = normalizeAppRole(getStoredRole());
 
   const displayName =
     user?.fullName ||
@@ -588,8 +631,21 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(AUTH_CHANGE_EVENT, refresh);
   }, []);
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const { user: storedUser } = readSession();
+    if (storedUser && !storedUser.isDemo) {
+      logClerkSessionDiagnostics(false);
+      console.info(
+        "[ElectraFlow Auth] Mock auth session active — Supabase JWT bridge is not used. " +
+          "Add VITE_CLERK_PUBLISHABLE_KEY and sign in with Clerk for live database access.",
+      );
+    }
+  }, [session]);
+
   const { role, user: storedUser } = session;
   const isSignedIn = !!role;
+  const normalizedRole = normalizeAppRole(role);
   const displayName = storedUser?.fullName || (role ? `${role} Demo` : "Guest");
   const email = storedUser?.email || "";
   const company = storedUser?.company || "";
@@ -598,7 +654,7 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
   const value: AuthState = {
     isSignedIn,
     isLoaded: true,
-    role,
+    role: normalizedRole,
     displayName,
     email,
     company,
@@ -618,10 +674,6 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
 }
 
 // ─── Public provider ──────────────────────────────────────────────────────────
-
-const IS_CLERK_CONFIGURED = !!(
-  typeof import.meta !== "undefined" && import.meta.env?.VITE_CLERK_PUBLISHABLE_KEY
-);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   if (IS_CLERK_CONFIGURED) {

@@ -110,6 +110,11 @@ export const supabase: SupabaseClient<any> | null = IS_SUPABASE_CONFIGURED
         fetch: async (url: RequestInfo | URL, options: RequestInit = {}) => {
           const headers = new Headers(options.headers);
 
+          // Ensure anon/publishable key is always sent (required alongside user JWT).
+          if (SUPABASE_ANON_KEY && !headers.has("apikey")) {
+            headers.set("apikey", SUPABASE_ANON_KEY);
+          }
+
           // Inject the Clerk JWT when a getter is available.
           // Called fresh on every request → tokens are always current.
           if (_clerkTokenGetter) {
@@ -157,6 +162,11 @@ export async function refreshRealtimeAuth(): Promise<void> {
 
 // ─── Dev diagnostics ─────────────────────────────────────────────────────────
 
+/** True when ClerkAuthProvider has registered a token getter (dev diagnostics). */
+export function isClerkTokenGetterWired(): boolean {
+  return _clerkTokenGetter !== null;
+}
+
 if (import.meta.env.DEV) {
   if (!IS_SUPABASE_CONFIGURED) {
     console.info(
@@ -164,10 +174,6 @@ if (import.meta.env.DEV) {
       "Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY in .env to enable.",
     );
   } else {
-    console.info(
-      "[ElectraFlow] Supabase: configured ✓",
-      SUPABASE_URL,
-      "— JWT readiness is dynamic (set by ClerkAuthProvider after profile bootstrap).",
-    );
+    console.info("[ElectraFlow] Supabase: configured ✓", SUPABASE_URL);
   }
 }

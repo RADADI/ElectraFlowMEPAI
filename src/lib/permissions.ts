@@ -1,6 +1,64 @@
 import type { Role } from "@/lib/dummy-data";
+import { ROLES } from "@/lib/dummy-data";
+import type { UserRole } from "@/types/database";
 
 export type AppRole = Role;
+
+/** Maps DB `user_role` enum values to UI `AppRole` labels. */
+const DB_ROLE_TO_APP_ROLE: Record<string, AppRole> = {
+  admin: "Admin",
+  project_manager: "Project Manager",
+  senior_electrical_engineer: "Senior Electrical Engineer",
+  electrical_engineer: "Electrical Engineer",
+  qa_qc_engineer: "QA/QC Engineer",
+  hr: "HR",
+  executive: "Executive",
+  client: "Client",
+};
+
+/** Maps UI `AppRole` labels to DB `user_role` enum values. */
+const APP_ROLE_TO_DB_ROLE: Record<AppRole, UserRole> = {
+  Admin: "admin",
+  "Project Manager": "project_manager",
+  "Senior Electrical Engineer": "senior_electrical_engineer",
+  "Electrical Engineer": "electrical_engineer",
+  "QA/QC Engineer": "qa_qc_engineer",
+  HR: "hr",
+  Executive: "executive",
+  Client: "client",
+};
+
+const DISPLAY_ROLE_SET = new Set<string>(ROLES);
+
+const DB_ROLE_SET = new Set<string>(Object.keys(DB_ROLE_TO_APP_ROLE));
+
+/**
+ * Accepts either UI role labels ("Electrical Engineer") or DB enum values
+ * ("electrical_engineer") and returns a canonical AppRole for RBAC checks.
+ */
+export function normalizeAppRole(role: string | null | undefined): AppRole | null {
+  if (!role) return null;
+  const trimmed = role.trim();
+  if (DISPLAY_ROLE_SET.has(trimmed)) return trimmed as AppRole;
+  const fromDb = DB_ROLE_TO_APP_ROLE[trimmed.toLowerCase()];
+  if (fromDb) return fromDb;
+  const snake = trimmed.toLowerCase().replace(/[\s/]+/g, "_");
+  return DB_ROLE_TO_APP_ROLE[snake] ?? null;
+}
+
+/**
+ * Converts UI or DB role strings to the Postgres `user_role` enum value.
+ */
+export function appRoleToDbRole(role: string | null | undefined): UserRole {
+  if (!role) return "electrical_engineer";
+  const trimmed = role.trim();
+  if (DB_ROLE_SET.has(trimmed.toLowerCase())) {
+    return trimmed.toLowerCase() as UserRole;
+  }
+  const normalized = normalizeAppRole(trimmed);
+  if (normalized) return APP_ROLE_TO_DB_ROLE[normalized];
+  return "electrical_engineer";
+}
 
 /**
  * Route → allowed roles.
@@ -18,7 +76,7 @@ export type AppRole = Role;
  * QA/QC Engineer     → /, /documents, /submittals, /rfi, /ncr, /reports
  * HR                 → /, /hr, /resources, /workload
  * Executive          → /, /executive, /pm, /financials, /resources, /workload, /reports
- * Client             → /, /client-portal, /documents
+ * Client             → /, /client-portal/*, /profile
  */
 export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
   "/": [
@@ -32,7 +90,14 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
     "Client",
   ],
   "/apps": ["Admin"],
-  "/ai": ["Admin", "Project Manager", "Senior Electrical Engineer", "Electrical Engineer"],
+  "/ai": [
+    "Admin",
+    "Project Manager",
+    "Senior Electrical Engineer",
+    "Electrical Engineer",
+    "QA/QC Engineer",
+    "Executive",
+  ],
   "/projects": [
     "Admin",
     "Project Manager",
@@ -46,7 +111,6 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
     "Senior Electrical Engineer",
     "Electrical Engineer",
     "QA/QC Engineer",
-    "Client",
   ],
   "/submittals": [
     "Admin",
@@ -78,7 +142,23 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
     "Executive",
   ],
   "/ncr": ["Admin", "Project Manager", "Senior Electrical Engineer", "QA/QC Engineer"],
-  "/meetings": ["Admin", "Project Manager"],
+  "/meetings": [
+    "Admin",
+    "Project Manager",
+    "Senior Electrical Engineer",
+    "Electrical Engineer",
+    "QA/QC Engineer",
+    "HR",
+    "Executive",
+  ],
+  "/electrical": [
+    "Admin",
+    "Project Manager",
+    "Senior Electrical Engineer",
+    "Electrical Engineer",
+    "QA/QC Engineer",
+    "Executive",
+  ],
   "/reports": [
     "Admin",
     "Project Manager",
@@ -121,7 +201,7 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
     "HR",
     "Executive",
   ],
-  /** Phase 13: Activity Center — all authenticated users (Client included) */
+  /** Phase 13: Activity Center — internal staff only (clients use portal activity) */
   "/activity": [
     "Admin",
     "Project Manager",
@@ -130,8 +210,9 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
     "QA/QC Engineer",
     "HR",
     "Executive",
-    "Client",
   ],
+  /** Phase 14: Audit Explorer — Admin only */
+  "/audit": ["Admin"],
 };
 
 /**
@@ -139,8 +220,9 @@ export const ROUTE_PERMISSIONS: Record<string, AppRole[]> = {
  * Admin bypasses all checks. Handles nested paths (e.g. /projects/p1 → /projects).
  */
 export function canAccess(role: AppRole | null, pathname: string): boolean {
-  if (!role) return false;
-  if (role === "Admin") return true;
+  const normalized = normalizeAppRole(role);
+  if (!normalized) return false;
+  if (normalized === "Admin") return true;
 
   // Derive the top-level segment: "/" stays "/", "/projects/p1" → "/projects"
   const segments = pathname.split("/").filter(Boolean);
@@ -148,15 +230,16 @@ export function canAccess(role: AppRole | null, pathname: string): boolean {
 
   const allowed = ROUTE_PERMISSIONS[key];
   if (!allowed) return false;
-  return allowed.includes(role);
+  return allowed.includes(normalized);
 }
 
 /** Returns all route paths the role can access. */
 export function accessibleRoutes(role: AppRole | null): string[] {
-  if (!role) return [];
-  if (role === "Admin") return Object.keys(ROUTE_PERMISSIONS);
+  const normalized = normalizeAppRole(role);
+  if (!normalized) return [];
+  if (normalized === "Admin") return Object.keys(ROUTE_PERMISSIONS);
   return Object.entries(ROUTE_PERMISSIONS)
-    .filter(([, roles]) => roles.includes(role))
+    .filter(([, roles]) => roles.includes(normalized))
     .map(([path]) => path);
 }
 
@@ -165,7 +248,8 @@ export function accessibleRoutes(role: AppRole | null): string[] {
  * Falls back to "/" (Dashboard) which every authenticated role can access.
  */
 export function getDefaultRoute(role: AppRole | null): string {
-  switch (role) {
+  const normalized = normalizeAppRole(role);
+  switch (normalized) {
     case "Client":
       return "/client-portal";
     case "HR":

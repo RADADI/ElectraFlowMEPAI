@@ -1,6 +1,7 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { useSignUp } from "@clerk/react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useClerk, useSignUp } from "@clerk/react";
+import type { SignUpFutureResource } from "@clerk/shared/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,22 +15,85 @@ import {
 import { Loader2 } from "lucide-react";
 import { ROLES } from "@/lib/dummy-data";
 import type { AppRole } from "@/lib/permissions";
-import { registerUser, setActiveSession, setMockSession } from "@/contexts/auth-context";
+import {
+  registerUser,
+  setActiveSession,
+  setStoredRole,
+  setStoredUser,
+  notifyAuthChange,
+} from "@/contexts/auth-context";
 import { AuthLeftPanel, MobileLogo, PasswordInput } from "@/routes/login";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Create account — ElectraFlow AI" }] }),
-  beforeLoad: () => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("mep-role");
-      if (role) throw redirect({ to: "/" });
-    }
-  },
   component: SignupPage,
 });
 
 const IS_CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+/** True when Clerk reports the email is already registered (not localStorage). */
+function isClerkEmailTakenError(error: {
+  code?: string;
+  message?: string;
+  errors?: Array<{ code?: string; meta?: { paramName?: string } }>;
+}): boolean {
+  if (error.code === "form_identifier_exists") return true;
+  if (
+    error.errors?.some(
+      (e) =>
+        e.code === "form_identifier_exists" ||
+        e.meta?.paramName === "email_address" ||
+        e.meta?.paramName === "emailAddress",
+    )
+  ) {
+    return true;
+  }
+  const msg = (error.message ?? "").toLowerCase();
+  return msg.includes("already exists") || msg.includes("already been taken");
+}
+
+function setEmailTakenError(
+  setErrors: Dispatch<SetStateAction<FormErrors>>,
+  setTouched: Dispatch<SetStateAction<Partial<Record<keyof SignupForm, boolean>>>>,
+) {
+  setErrors((prev) => ({
+    ...prev,
+    email: "An account with this email already exists. Sign in instead.",
+  }));
+  setTouched((prev) => ({ ...prev, email: true }));
+}
+
+function logSignUpState(label: string, signUp: SignUpFutureResource | null | undefined): void {
+  if (!import.meta.env.DEV || !signUp) return;
+  console.info(`[ElectraFlow Signup] ${label}`, {
+    status: signUp.status,
+    missingFields: signUp.missingFields,
+    unverifiedFields: signUp.unverifiedFields,
+  });
+}
+
+async function sendSignupEmailCode(
+  signUp: SignUpFutureResource,
+): Promise<{ error: string | null }> {
+  // Clerk v6: verifications.sendEmailCode() (equivalent to prepareEmailAddressVerification email_code)
+  const { error } = await signUp.verifications.sendEmailCode();
+  if (error) return { error: clerkErrorMessage(error) };
+  return { error: null };
+}
+
+function clerkErrorMessage(error: { longMessage?: string; message?: string }): string {
+  return error.longMessage || error.message || "Something went wrong. Please try again.";
+}
+
+type SignupStep = "details" | "verify";
+
+interface PendingSignup {
+  fullName: string;
+  email: string;
+  company: string;
+  role: AppRole;
+}
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
@@ -266,7 +330,15 @@ function useSignupForm() {
   function onChange(field: keyof SignupForm, value: string) {
     const next = { ...form, [field]: value };
     setForm(next);
-    if (touched[field]) setErrors(validate(next));
+    if (field === "email") {
+      setErrors((prev) => {
+        if (!prev.email) return prev;
+        const { email: _removed, ...rest } = prev;
+        return rest;
+      });
+    } else if (touched[field]) {
+      setErrors(validate(next));
+    }
   }
 
   function onBlur(field: keyof SignupForm) {
@@ -293,11 +365,117 @@ function useSignupForm() {
   };
 }
 
+// ─── Clerk email verification step ────────────────────────────────────────────
+
+interface EmailVerificationStepProps {
+  email: string;
+  code: string;
+  verificationError: string | null;
+  loading: boolean;
+  onCodeChange: (value: string) => void;
+  onVerify: (e: React.FormEvent) => void;
+  onResend: () => void;
+  onBack: () => void;
+}
+
+function EmailVerificationStep({
+  email,
+  code,
+  verificationError,
+  loading,
+  onCodeChange,
+  onVerify,
+  onResend,
+  onBack,
+}: EmailVerificationStepProps) {
+  return (
+    <>
+      <MobileLogo />
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Verify your email</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Enter the verification code sent to your email.
+        </p>
+        <p className="text-sm font-medium text-foreground mt-2">{email}</p>
+        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+          Delivery can take a minute. Check your spam folder if you do not see the message.
+        </p>
+      </div>
+
+      <form onSubmit={onVerify} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="su-verify-code">Verification code</Label>
+          <Input
+            id="su-verify-code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={code}
+            onChange={(e) => onCodeChange(e.target.value.replace(/\s/g, ""))}
+            placeholder="123456"
+            maxLength={8}
+            aria-invalid={!!verificationError}
+          />
+          {verificationError && <FieldError msg={verificationError} />}
+        </div>
+
+        <Button type="submit" className="w-full h-10" disabled={loading || !code.trim()}>
+          {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {loading ? "Verifying…" : "Verify"}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-10"
+          disabled={loading}
+          onClick={onResend}
+        >
+          Resend code
+        </Button>
+
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={loading}
+          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Use a different email
+        </button>
+      </form>
+
+      <p className="text-sm text-center text-muted-foreground mt-4">
+        Already have an account?{" "}
+        <Link to="/login" className="text-primary font-medium hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </>
+  );
+}
+
+// ─── Clerk signup session helpers ─────────────────────────────────────────────
+
+const PENDING_SIGNUP_COMPANY_KEY = "mep-pending-company";
+const PENDING_SIGNUP_ROLE_KEY = "mep-pending-role";
+
+function persistPendingSignup(profile: PendingSignup): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(PENDING_SIGNUP_COMPANY_KEY, profile.company);
+  sessionStorage.setItem(PENDING_SIGNUP_ROLE_KEY, profile.role);
+}
+
 // ─── Clerk signup form ────────────────────────────────────────────────────────
 
 function ClerkSignupForm() {
   const navigate = useNavigate();
   const { signUp } = useSignUp();
+  const { setActive } = useClerk();
+  const [step, setStep] = useState<SignupStep>("details");
+  const [pendingSignup, setPendingSignup] = useState<PendingSignup | null>(null);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const {
     form,
     errors,
@@ -311,66 +489,209 @@ function ClerkSignupForm() {
     setLoading,
   } = useSignupForm();
 
+  useEffect(() => {
+    setErrors({});
+    setTouched({});
+  }, [setErrors, setTouched]);
+
+  async function finishVerifiedSignup(profile: PendingSignup, sessionId: string | null) {
+    if (!sessionId) {
+      const { error: finalizeError } = await signUp!.finalize();
+      if (finalizeError) {
+        toast.error(clerkErrorMessage(finalizeError));
+        return;
+      }
+      sessionId = signUp!.createdSessionId;
+    }
+
+    if (!sessionId) {
+      toast.error("Session could not be created after verification.");
+      return;
+    }
+
+    // Write signup context BEFORE setActive so bootstrapProfile can read company/role
+    // when ClerkAuthProvider reacts to the new session.
+    setStoredUser({
+      fullName: profile.fullName,
+      email: profile.email,
+      company: profile.company,
+    });
+    setStoredRole(profile.role);
+    persistPendingSignup(profile);
+    notifyAuthChange();
+
+    await setActive({ session: sessionId });
+
+    toast.success("Account verified! Let's set up your workspace.");
+    navigate({ to: "/onboarding", replace: true });
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     touchAll();
     const errs = validate(form);
-    if (Object.keys(errs).length > 0) return;
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
     if (!signUp) return;
 
     setLoading(true);
+    setVerificationError(null);
     try {
-      // 1. Register in mock registry (checks duplicate email)
-      let newUser;
-      try {
-        newUser = registerUser({
-          name: form.fullName,
-          email: form.email,
-          company: form.company,
-          role: form.role,
-          password: form.password,
-        });
-      } catch (err: unknown) {
-        if (err instanceof Error && err.message === "EMAIL_TAKEN") {
-          setErrors((prev) => ({
-            ...prev,
-            email: "An account with this email already exists. Sign in instead.",
-          }));
-          setTouched((prev) => ({ ...prev, email: true }));
-          return;
-        }
-        throw err;
-      }
-
-      // 2. Register with Clerk
       const nameParts = form.fullName.trim().split(" ");
+      const pending: PendingSignup = {
+        fullName: form.fullName.trim(),
+        email: form.email.trim().toLowerCase(),
+        company: form.company.trim(),
+        role: form.role,
+      };
+
       const { error: createError } = await signUp.create({
-        emailAddress: form.email,
+        emailAddress: pending.email,
         password: form.password,
         firstName: nameParts[0],
         lastName: nameParts.slice(1).join(" ") || "",
       });
 
+      logSignUpState("after create", signUp);
+
       if (createError) {
-        toast.error(createError.longMessage || createError.message || "Signup failed.");
+        if (isClerkEmailTakenError(createError)) {
+          setEmailTakenError(setErrors, setTouched);
+        } else {
+          toast.error(clerkErrorMessage(createError));
+        }
         return;
       }
 
       if (signUp.status === "complete") {
-        await signUp.finalize();
-      } else if (signUp.status === "missing_requirements") {
-        toast.info("Check your email to verify your address, then sign in.");
+        if (import.meta.env.DEV) {
+          console.info("[ElectraFlow Signup] create complete — activating session", {
+            createdSessionId: signUp.createdSessionId,
+          });
+        }
+        await finishVerifiedSignup(pending, signUp.createdSessionId);
+        return;
       }
 
-      // 3. Start the session
-      setActiveSession(newUser);
-      toast.success("Account created! Let's set up your workspace.");
-      navigate({ to: "/onboarding", replace: true });
+      const { error: sendCodeError } = await sendSignupEmailCode(signUp);
+      if (sendCodeError) {
+        toast.error(sendCodeError);
+        return;
+      }
+
+      if (import.meta.env.DEV) {
+        console.info("[ElectraFlow Signup] sendEmailCode success (email_code strategy)");
+        logSignUpState("after send verification code", signUp);
+      }
+
+      setPendingSignup(pending);
+      persistPendingSignup(pending);
+      setVerificationCode("");
+      setVerificationError(null);
+      setStep("verify");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function verifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (!signUp || !pendingSignup) return;
+
+    const code = verificationCode.trim();
+    if (!code) {
+      setVerificationError("Enter the verification code from your email.");
+      return;
+    }
+
+    setLoading(true);
+    setVerificationError(null);
+    try {
+      const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code });
+
+      if (import.meta.env.DEV) {
+        console.info("[ElectraFlow Signup] verifyEmailCode result", {
+          verifyError: verifyError?.message ?? null,
+          status: signUp.status,
+          createdSessionId: signUp.createdSessionId,
+          missingFields: signUp.missingFields,
+          unverifiedFields: signUp.unverifiedFields,
+        });
+      }
+
+      if (verifyError) {
+        setVerificationError(clerkErrorMessage(verifyError));
+        return;
+      }
+
+      if (signUp.status === "complete") {
+        await finishVerifiedSignup(pendingSignup, signUp.createdSessionId);
+        return;
+      }
+
+      logSignUpState("verification incomplete", signUp);
+      setVerificationError(
+        "Verification incomplete. Check the code and try again, or request a new code.",
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Verification failed. Please try again.";
+      setVerificationError(msg);
+      if (import.meta.env.DEV) {
+        console.info("[ElectraFlow Signup] attemptEmailAddressVerification error", err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resendCode() {
+    if (!signUp) return;
+    setLoading(true);
+    setVerificationError(null);
+    try {
+      const { error: sendCodeError } = await sendSignupEmailCode(signUp);
+      if (sendCodeError) {
+        toast.error(sendCodeError);
+        return;
+      }
+      if (import.meta.env.DEV) {
+        console.info("[ElectraFlow Signup] verification code resent");
+      }
+      toast.success("A new verification code was sent to your email.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not resend code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function backToDetails() {
+    void signUp?.reset();
+    setStep("details");
+    setPendingSignup(null);
+    setVerificationCode("");
+    setVerificationError(null);
+  }
+
+  if (step === "verify" && pendingSignup) {
+    return (
+      <SignupLayout>
+        <EmailVerificationStep
+          email={pendingSignup.email}
+          code={verificationCode}
+          verificationError={verificationError}
+          loading={loading}
+          onCodeChange={setVerificationCode}
+          onVerify={verifyCode}
+          onResend={resendCode}
+          onBack={backToDetails}
+        />
+      </SignupLayout>
+    );
   }
 
   return (
@@ -427,11 +748,7 @@ function MockSignupForm() {
         navigate({ to: "/onboarding", replace: true });
       } catch (err: unknown) {
         if (err instanceof Error && err.message === "EMAIL_TAKEN") {
-          setErrors((prev) => ({
-            ...prev,
-            email: "An account with this email already exists. Sign in instead.",
-          }));
-          setTouched((prev) => ({ ...prev, email: true }));
+          setEmailTakenError(setErrors, setTouched);
         } else {
           toast.error("Signup failed. Please try again.");
         }

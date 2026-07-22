@@ -15,8 +15,13 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/auth-context";
+import { logAuthEnvDiagnostics } from "@/lib/auth-diagnostics";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+
+if (import.meta.env.DEV) {
+  logAuthEnvDiagnostics();
+}
 
 function NotFoundComponent() {
   return (

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useSignIn } from "@clerk/react";
 import { Button } from "@/components/ui/button";
@@ -27,12 +27,6 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — ElectraFlow AI" }] }),
-  beforeLoad: () => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("mep-role") as AppRole | null;
-      if (role) throw redirect({ to: getDefaultRoute(role) });
-    }
-  },
   component: LoginPage,
 });
 

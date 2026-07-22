@@ -22,7 +22,17 @@
  */
 
 import type { AppRole } from "@/lib/permissions";
+import { appRoleToDbRole, normalizeAppRole } from "@/lib/permissions";
+import {
+  logBootstrapFirstUserCreated,
+  logBootstrapFirstUserFailed,
+  logBootstrapFirstUserStarted,
+  logBootstrapProfileFound,
+  logBootstrapProfileMissing,
+  logBootstrapProfileStarted,
+} from "@/lib/auth-diagnostics";
 import { supabase, IS_SUPABASE_CONFIGURED } from "@/lib/supabase";
+import { bootstrapFirstUser } from "@/services/bootstrap-first-user.service";
 
 // ─── Crypto utility ───────────────────────────────────────────────────────────
 
@@ -43,6 +53,8 @@ export async function sha256Hex(text: string): Promise<string> {
 
 const _ROLE_KEY = "mep-role";
 const _USER_KEY = "mep-user";
+const _PENDING_COMPANY_KEY = "mep-pending-company";
+const _PENDING_ROLE_KEY = "mep-pending-role";
 
 interface _LocalUser {
   fullName: string;
@@ -88,6 +100,10 @@ export interface CachedProfile {
 }
 
 let _profile: CachedProfile | null = null;
+
+function profileRoleFromDb(role: string): AppRole {
+  return normalizeAppRole(role) ?? "Electrical Engineer";
+}
 
 /** Store verified DB profile values.  Called by ClerkAuthProvider only. */
 export function setCachedProfile(profile: CachedProfile | null): void {
@@ -224,12 +240,18 @@ export async function bootstrapProfile(params: {
   fullName: string;
   /** From Clerk public metadata — ONLY used for initial profile creation. */
   orgIdFromMetadata?: string | null;
+  /** Company name from signup localStorage — used for first-tenant bootstrap. */
+  companyName?: string | null;
+  /** Role selected at signup (UI label or DB enum) — first user only. */
+  selectedRole?: string | null;
 }): Promise<BootstrapResult> {
   if (!IS_SUPABASE_CONFIGURED || !supabase) {
     return { ok: false, reason: "error", error: "Supabase is not configured." };
   }
 
-  const { clerkUserId, email, fullName, orgIdFromMetadata } = params;
+  const { clerkUserId, email, fullName, orgIdFromMetadata, companyName, selectedRole } = params;
+
+  logBootstrapProfileStarted(clerkUserId, email);
 
   // ── Step 1: Look up existing profile by clerk_user_id ─────────────────────
   const { data: existing, error: fetchErr } = await supabase
@@ -243,6 +265,8 @@ export async function bootstrapProfile(params: {
   }
 
   if (existing) {
+    logBootstrapProfileFound(existing.id as string, existing.organization_id as string);
+
     // Check deactivated first
     if (existing.is_active === false) {
       return {
@@ -262,12 +286,14 @@ export async function bootstrapProfile(params: {
         profileId: existing.id as string,
         clerkUserId: existing.clerk_user_id as string,
         organizationId: existing.organization_id as string,
-        role: existing.role as AppRole,
+        role: profileRoleFromDb(existing.role as string),
         fullName: existing.full_name as string,
         email: existing.email as string,
       },
     };
   }
+
+  logBootstrapProfileMissing(clerkUserId);
 
   // ── Step 2: No profile — try invite token from sessionStorage (Phase 6) ───
   const rawToken =
@@ -303,7 +329,7 @@ export async function bootstrapProfile(params: {
             organization_id: invite.organization_id,
             full_name: fullName || email.split("@")[0] || "User",
             email,
-            role: invite.role,
+            role: invite.role as string,
           })
           .select("id, clerk_user_id, organization_id, role, full_name, email")
           .single();
@@ -337,7 +363,7 @@ export async function bootstrapProfile(params: {
             profileId: created.id as string,
             clerkUserId: created.clerk_user_id as string,
             organizationId: created.organization_id as string,
-            role: created.role as AppRole,
+            role: profileRoleFromDb(created.role as string),
             fullName: created.full_name as string,
             email: created.email as string,
           },
@@ -348,7 +374,68 @@ export async function bootstrapProfile(params: {
     }
   }
 
-  // ── Step 3: No profile, no invite — try orgIdFromMetadata (Clerk metadata) ─
+  // ── Step 3: First-tenant bootstrap (signup company + role from localStorage) ─
+  const storedUser = _readUser();
+  const storedRole = _readRole();
+  const pendingCompany =
+    typeof window !== "undefined" ? sessionStorage.getItem(_PENDING_COMPANY_KEY)?.trim() || "" : "";
+  const pendingRole =
+    typeof window !== "undefined"
+      ? (sessionStorage.getItem(_PENDING_ROLE_KEY) as AppRole | null)
+      : null;
+  const resolvedCompany =
+    companyName?.trim() || storedUser?.company?.trim() || pendingCompany || "";
+  const resolvedRole = selectedRole ?? storedRole ?? pendingRole;
+  const dbRole = appRoleToDbRole(resolvedRole);
+
+  if (resolvedCompany) {
+    logBootstrapFirstUserStarted(resolvedCompany, dbRole);
+
+    const { data: firstUser, error: firstUserErr } = await bootstrapFirstUser({
+      clerkUserId,
+      email,
+      fullName,
+      companyName: resolvedCompany,
+      role: dbRole,
+    });
+
+    if (firstUserErr) {
+      logBootstrapFirstUserFailed(firstUserErr);
+      return {
+        ok: false,
+        reason: "error",
+        error: `First-user bootstrap failed: ${firstUserErr}`,
+      };
+    }
+
+    if (firstUser) {
+      logBootstrapFirstUserCreated({
+        profileId: firstUser.profileId,
+        organizationId: firstUser.organizationId,
+        created: firstUser.created,
+        organizationCreated: firstUser.organizationCreated,
+      });
+
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(_PENDING_COMPANY_KEY);
+        sessionStorage.removeItem(_PENDING_ROLE_KEY);
+      }
+
+      return {
+        ok: true,
+        profile: {
+          profileId: firstUser.profileId,
+          clerkUserId,
+          organizationId: firstUser.organizationId,
+          role: profileRoleFromDb(firstUser.role),
+          fullName: firstUser.fullName,
+          email: firstUser.email,
+        },
+      };
+    }
+  }
+
+  // ── Step 4: No profile, no invite, no company — try orgIdFromMetadata ─────
   if (!orgIdFromMetadata) {
     return {
       ok: false,
@@ -387,7 +474,7 @@ export async function bootstrapProfile(params: {
       profileId: created.id as string,
       clerkUserId: created.clerk_user_id as string,
       organizationId: created.organization_id as string,
-      role: created.role as AppRole,
+      role: profileRoleFromDb(created.role as string),
       fullName: created.full_name as string,
       email: created.email as string,
     },
