@@ -36,7 +36,6 @@ import { Route as AppExecutiveRouteImport } from './routes/_app.executive'
 import { Route as AppElectricalRouteImport } from './routes/_app.electrical'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppClientPortalRouteImport } from './routes/_app.client-portal'
-import { Route as AppClientRouteImport } from './routes/_app.client'
 import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppAppsRouteImport } from './routes/_app.apps'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
@@ -200,11 +199,6 @@ const AppDocumentsRoute = AppDocumentsRouteImport.update({
 const AppClientPortalRoute = AppClientPortalRouteImport.update({
   id: '/client-portal',
   path: '/client-portal',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppClientRoute = AppClientRouteImport.update({
-  id: '/client',
-  path: '/client',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAuditRoute = AppAuditRouteImport.update({
@@ -374,7 +368,6 @@ export interface FileRoutesByFullPath {
   '/ai': typeof AppAiRouteWithChildren
   '/apps': typeof AppAppsRoute
   '/audit': typeof AppAuditRoute
-  '/client': typeof AppClientRoute
   '/client-portal': typeof AppClientPortalRouteWithChildren
   '/documents': typeof AppDocumentsRouteWithChildren
   '/electrical': typeof AppElectricalRouteWithChildren
@@ -432,7 +425,6 @@ export interface FileRoutesByTo {
   '/ai': typeof AppAiRouteWithChildren
   '/apps': typeof AppAppsRoute
   '/audit': typeof AppAuditRoute
-  '/client': typeof AppClientRoute
   '/client-portal': typeof AppClientPortalRouteWithChildren
   '/documents': typeof AppDocumentsRouteWithChildren
   '/electrical': typeof AppElectricalRouteWithChildren
@@ -493,7 +485,6 @@ export interface FileRoutesById {
   '/_app/ai': typeof AppAiRouteWithChildren
   '/_app/apps': typeof AppAppsRoute
   '/_app/audit': typeof AppAuditRoute
-  '/_app/client': typeof AppClientRoute
   '/_app/client-portal': typeof AppClientPortalRouteWithChildren
   '/_app/documents': typeof AppDocumentsRouteWithChildren
   '/_app/electrical': typeof AppElectricalRouteWithChildren
@@ -555,7 +546,6 @@ export interface FileRouteTypes {
     | '/ai'
     | '/apps'
     | '/audit'
-    | '/client'
     | '/client-portal'
     | '/documents'
     | '/electrical'
@@ -613,7 +603,6 @@ export interface FileRouteTypes {
     | '/ai'
     | '/apps'
     | '/audit'
-    | '/client'
     | '/client-portal'
     | '/documents'
     | '/electrical'
@@ -673,7 +662,6 @@ export interface FileRouteTypes {
     | '/_app/ai'
     | '/_app/apps'
     | '/_app/audit'
-    | '/_app/client'
     | '/_app/client-portal'
     | '/_app/documents'
     | '/_app/electrical'
@@ -922,13 +910,6 @@ declare module '@tanstack/react-router' {
       path: '/client-portal'
       fullPath: '/client-portal'
       preLoaderRoute: typeof AppClientPortalRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/client': {
-      id: '/_app/client'
-      path: '/client'
-      fullPath: '/client'
-      preLoaderRoute: typeof AppClientRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/audit': {
@@ -1361,7 +1342,6 @@ interface AppRouteChildren {
   AppAiRoute: typeof AppAiRouteWithChildren
   AppAppsRoute: typeof AppAppsRoute
   AppAuditRoute: typeof AppAuditRoute
-  AppClientRoute: typeof AppClientRoute
   AppClientPortalRoute: typeof AppClientPortalRouteWithChildren
   AppDocumentsRoute: typeof AppDocumentsRouteWithChildren
   AppElectricalRoute: typeof AppElectricalRouteWithChildren
@@ -1390,7 +1370,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppAiRoute: AppAiRouteWithChildren,
   AppAppsRoute: AppAppsRoute,
   AppAuditRoute: AppAuditRoute,
-  AppClientRoute: AppClientRoute,
   AppClientPortalRoute: AppClientPortalRouteWithChildren,
   AppDocumentsRoute: AppDocumentsRouteWithChildren,
   AppElectricalRoute: AppElectricalRouteWithChildren,
