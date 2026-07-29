@@ -599,9 +599,14 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
     "User";
   const email = user?.primaryEmailAddress?.emailAddress || storedUser?.email || "";
   const company = storedUser?.company || "";
+  // Demo Login writes a session without involving Clerk, so Clerk reports signed
+  // out. The rest of the app (route guard, sidebar, RBAC) treats that session as
+  // valid, so report it as signed in here too — otherwise RoleGuard bounces demo
+  // users to /login on the pages it protects.
+  const isDemoSession = storedUser?.isDemo ?? false;
 
   const value: AuthState = {
-    isSignedIn: isLoaded && !!isSignedIn,
+    isSignedIn: (isLoaded && !!isSignedIn) || (isDemoSession && !!role),
     isLoaded,
     role,
     displayName,
@@ -609,7 +614,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
     company,
     imageUrl: user?.imageUrl || null,
     initials: toInitials(displayName) || "EF",
-    isDemo: storedUser?.isDemo ?? false,
+    isDemo: isDemoSession,
     isJwtReady: jwtReady,
     profileStatus,
     signOut: doSignOut,

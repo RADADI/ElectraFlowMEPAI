@@ -30,6 +30,10 @@ MIGRATION_FILES = [
     ("013", "phase15b_electrical", "migration-phase15b.sql", "plain"),
     ("014", "phase15c_ai", "migration-phase15c.sql", "plain"),
     ("015", "phase15d_client_portal", "migration-phase15d.sql", "plain"),
+    # Appended last rather than ordered after 003 so existing chunk/migration
+    # filenames stay stable. The function only needs the core tables and the
+    # user_role enum from 001, so running it at the end is equivalent.
+    ("016", "phase5b_bootstrap_first_user", "migration-phase5b-bootstrap-first-user.sql", "plain"),
 ]
 
 TIMESTAMPED = [
@@ -48,6 +52,7 @@ TIMESTAMPED = [
     "202607010013_phase15b_electrical.sql",
     "202607010014_phase15c_ai.sql",
     "202607010015_phase15d_client_portal.sql",
+    "202607010016_phase5b_bootstrap_first_user.sql",
 ]
 
 CHUNK_GROUPS = [
@@ -57,6 +62,7 @@ CHUNK_GROUPS = [
     ("04_resources_timesheets_financials.sql", ["007", "008", "009"]),
     ("05_notifications_reports.sql", ["010", "011"]),
     ("06_meetings_electrical_ai_client_portal.sql", ["012", "013", "014", "015"]),
+    ("07_bootstrap_first_user.sql", ["016"]),
 ]
 
 PRODUCTION_HEADER = """-- ===========================================================================
@@ -161,6 +167,7 @@ def sync_migrations() -> None:
         "migration-phase15b.sql",
         "migration-phase15c.sql",
         "migration-phase15d.sql",
+        "migration-phase5b-bootstrap-first-user.sql",
     ]
     for src, dst in zip(pairs, TIMESTAMPED):
         (MIG / dst).write_text(read_src(src) + "\n")

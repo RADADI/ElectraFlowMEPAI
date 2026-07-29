@@ -32,6 +32,7 @@ import {
   logBootstrapProfileStarted,
 } from "@/lib/auth-diagnostics";
 import { supabase, IS_SUPABASE_CONFIGURED } from "@/lib/supabase";
+import { explainSupabaseError } from "@/lib/supabase-errors";
 import { bootstrapFirstUser } from "@/services/bootstrap-first-user.service";
 
 // ─── Crypto utility ───────────────────────────────────────────────────────────
@@ -261,7 +262,7 @@ export async function bootstrapProfile(params: {
     .maybeSingle();
 
   if (fetchErr) {
-    return { ok: false, reason: "error", error: fetchErr.message };
+    return { ok: false, reason: "error", error: explainSupabaseError(fetchErr) };
   }
 
   if (existing) {
