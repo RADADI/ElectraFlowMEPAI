@@ -23,13 +23,20 @@ export const Route = createFileRoute("/_app")({
 
 function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { role, isLoaded } = useAuth();
+  const { role, isLoaded, isSignedIn } = useAuth();
 
   // Derive the base segment for matching against the permissions map
   const base = pathname === "/" ? "/" : "/" + pathname.split("/").filter(Boolean)[0];
 
   // While Clerk is still loading, render nothing to avoid flash
   if (!isLoaded) return null;
+
+  // No session — sign-out clears the stored role and this layout re-renders
+  // before beforeLoad can run again, so route here rather than falling through
+  // to the RBAC check below, which would read as "denied" and show /unauthorized.
+  if (!isSignedIn || !role) {
+    return <Navigate to="/login" />;
+  }
 
   // Route-level RBAC (authenticated app layout only — auth pages are separate routes)
   if (!canAccess(role, base)) {

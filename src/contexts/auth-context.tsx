@@ -390,6 +390,9 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>("idle");
   const [bootstrapError, setBootstrapError] = useState<string>("");
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
+  /** Clerk stays signed in until its async sign-out lands; suppress the role
+   *  placeholder in that window so it is not written straight back. */
+  const [signingOut, setSigningOut] = useState(false);
 
   // Refresh on mock auth changes (e.g. demo login alongside Clerk)
   const [, setTick] = useState(0);
@@ -511,18 +514,34 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
   // Without this, Clerk-signed-in users would be redirected to /login
   // every time (because mep-role is cleared on sign-out).
   // Set a minimum-privilege placeholder; the bootstrap replaces it with the DB role.
-  if (isLoaded && isSignedIn && typeof window !== "undefined" && !localStorage.getItem(ROLE_KEY)) {
+  if (
+    isLoaded &&
+    isSignedIn &&
+    !signingOut &&
+    typeof window !== "undefined" &&
+    !localStorage.getItem(ROLE_KEY)
+  ) {
     localStorage.setItem(ROLE_KEY, "Electrical Engineer");
   }
 
   // ── Handle blocking states (shown instead of the app) ─────────────────────
   const doSignOut = () => {
+    setSigningOut(true);
     clearAuthStorage();
     clearCachedProfile();
     setJwtReady(false);
     setJwtReadyState(false);
     setClerkTokenGetter(null);
-    clerkSignOut({ redirectUrl: "/login" });
+
+    if (isSignedIn) {
+      clerkSignOut({ redirectUrl: "/login" });
+      return;
+    }
+
+    // Demo Login session — Clerk has nothing to end, so it never redirects.
+    if (typeof window !== "undefined") {
+      window.location.replace("/login");
+    }
   };
 
   if (isLoaded && isSignedIn && profileStatus === "loading") {
